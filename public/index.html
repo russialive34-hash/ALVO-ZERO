@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0d1117">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>ALVO ZERO</title>
+<link rel="icon" href="icone.svg">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="tres"></div>
+
+<!-- entrada -->
+<section id="tNick" class="tela nick">
+  <div class="logo"><span>ALVO</span><b>ZERO</b></div>
+  <p class="slogan">FPS ONLINE · SALAS · TIMES · HEADSHOT</p>
+  <form id="fAuth" class="auth" autocomplete="on" onsubmit="return false">
+    <div class="abas"><button type="button" id="abaEntrar" class="on">ENTRAR</button><button type="button" id="abaCriar">CRIAR CONTA</button></div>
+    <label class="campo"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4.5 4.5-6.5 8-6.5s7 2 8 6.5"/></svg><input id="inUser" name="username" maxlength="14" placeholder="Usuário" autocomplete="username" autocapitalize="off" spellcheck="false" enterkeyhint="next"></label>
+    <label class="campo"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><input id="inSenha" name="password" type="password" maxlength="40" placeholder="Senha" autocomplete="current-password" enterkeyhint="go"><button type="button" class="olho" id="btOlho" aria-label="Mostrar senha">👁</button></label>
+    <label class="campo" id="campoSenha2" hidden><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M9.5 15.5l2 2 3.5-3.5"/></svg><input id="inSenha2" type="password" maxlength="40" placeholder="Confirmar senha" autocomplete="new-password" enterkeyhint="go"></label>
+    <label class="lembrar"><input type="checkbox" id="inLembrar" checked> Manter conectado neste aparelho</label>
+    <button type="submit" id="btEntrar" class="bt bt-ouro">ENTRAR</button>
+    <p id="authMsg" class="auth-msg"></p>
+  </form>
+  <p class="dica">🎧 Use fone de ouvido · jogue com o celular deitado</p>
+</section>
+
+<!-- lobby -->
+<section id="tLobby" class="tela lobby" hidden>
+  <header class="topo">
+    <div class="eu"><i id="lPat" class="pat"></i><div><b id="lNick">-</b><small id="lPatNome">Recruta</small><div class="xp"><i id="lXp"></i></div><small id="lXpTxt" class="xptxt"></small></div></div>
+    <nav class="atalhos"><button id="btMissoes" class="at">🎯<span>MISSÕES</span><i id="mBadge" hidden></i></button><button id="btRanking" class="at">🏆<span>RANKING</span></button><button id="btAmigos" class="at">👥<span>AMIGOS</span><i id="aBadge" hidden></i></button><button id="btCla" class="at">🛡️<span>CLÃ</span></button></nav>
+    <div class="moedas" title="Moedas"><i class="moeda"></i><b id="lMoedas">0</b></div>
+    <div class="stats"><span>K <b id="lK">0</b></span><span>D <b id="lD">0</b></span><span>HS <b id="lHs">0</b></span><span>VIT <b id="lV">0</b></span></div>
+    <button id="btSomL" class="bt-ic">🔊</button><button id="btSairConta" class="bt-ic" title="Sair da conta">⏻</button>
+  </header>
+  <div class="lobby-corpo">
+    <div class="lista">
+      <div class="lista-cab"><span>Nº</span><span>SALA</span><span>MODO</span><span>MAPA</span><span>JOG.</span><span>ESTADO</span></div>
+      <div id="listaSalas" class="lista-linhas"></div>
+    </div>
+    <div class="lado-bts">
+      <button id="btRapida" class="bt bt-ouro">⚡ PARTIDA RÁPIDA</button>
+      <button id="btLoja" class="bt bt-loja">🛒 LOJA</button>
+      <button id="btCriar" class="bt">＋ CRIAR SALA</button>
+      <button id="btEntrarSala" class="bt">▶ ENTRAR</button>
+      <button id="btAtualizar" class="bt">↻ ATUALIZAR</button>
+      <button id="btGraf" class="bt">⚙ CONFIGURAÇÕES</button>
+      <button id="btCreditos" class="bt bt-pq" style="margin-top:auto">CRÉDITOS</button>
+    </div>
+  </div>
+</section>
+
+<!-- sala -->
+<section id="tSala" class="tela sala" hidden>
+  <header class="topo"><b id="sNome">Sala</b><span id="sInfo" class="info"></span><button id="btSairSala" class="bt bt-pq">SAIR</button></header>
+  <div class="sala-corpo">
+    <div class="time vermelho"><h3>VERMELHO</h3><div id="sVerm" class="vagas"></div></div>
+    <div class="meio">
+      <canvas id="sMapa" width="260" height="170"></canvas>
+      <div class="conf">
+        <label>MAPA<select id="cMapa"></select></label>
+        <label>MODO<select id="cModo"></select></label>
+        <label>META<select id="cMeta"><option>30</option><option selected>50</option><option>80</option><option>100</option><option>160</option></select></label>
+        <label>TEMPO<select id="cTempo"><option value="5">5 min</option><option value="10" selected>10 min</option><option value="15">15 min</option><option value="20">20 min</option></select></label>
+        <label>BOTS<select id="cBots"></select></label>
+      </div>
+      <div id="sArmas" class="armas-esc"></div>
+      <div class="chat"><div id="sChat" class="chat-log"></div><form id="fChat"><input id="inChat" maxlength="120" placeholder="Mensagem…" autocomplete="off"><button class="bt bt-pq">➤</button></form></div>
+    </div>
+    <div class="time azul"><h3>AZUL</h3><div id="sAzul" class="vagas"></div></div>
+  </div>
+  <footer class="rodape-sala"><button id="btTrocarTime" class="bt">⇄ TROCAR TIME</button><button id="btPronto" class="bt bt-ouro">PRONTO</button></footer>
+</section>
+
+<!-- partida -->
+<section id="tJogo" hidden>
+  <div class="placar"><div class="pv"><small>VERMELHO</small><b id="pR">000</b></div><div class="pm"><b id="pTempo">10:00</b><small>META <i id="pMeta">50</i></small></div><div class="pa"><b id="pB">000</b><small>AZUL</small></div></div>
+  <div id="feed" class="feed"></div>
+  <div id="mira" class="mira"><i></i><i></i><i></i><i></i><b></b></div>
+  <div id="marca" class="marca"></div>
+  <div id="hs" class="hs"><span>HEAD SHOT</span></div>
+  <div id="banner" class="banner"></div>
+  <div id="espiando" class="espiando" hidden></div>
+  <div id="hRodada" class="h-rodada" hidden></div>
+  <div id="progBomba" class="prog-bomba" hidden><span>PLANTANDO…</span><div><i></i></div></div>
+  <div id="estrelas" class="estrelas"></div>
+  <div id="danoDir" class="dano-dir"></div>
+  <div id="luneta" class="luneta" hidden></div>
+  <div id="mira15" class="mira15" hidden><div class="tubo"><i class="h"></i><i class="v"></i><b></b><span>1.5x</span></div></div>
+  <div id="holo" class="holo" hidden>
+    <svg viewBox="150 75 700 450" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <defs>
+        <linearGradient id="hgM" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6b7075"/><stop offset=".45" stop-color="#43474b"/><stop offset="1" stop-color="#1e2124"/></linearGradient>
+        <linearGradient id="hgL" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity=".45"/><stop offset=".2" stop-color="#000" stop-opacity="0"/><stop offset=".8" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".45"/></linearGradient>
+        <linearGradient id="hgB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#55595d"/><stop offset="1" stop-color="#1a1c1e"/></linearGradient>
+        <radialGradient id="hgV" cx=".35" cy=".25" r=".9"><stop offset="0" stop-color="#bfe6ff" stop-opacity=".10"/><stop offset=".6" stop-color="#7fb0d0" stop-opacity=".04"/><stop offset="1" stop-color="#000" stop-opacity=".12"/></radialGradient>
+        <radialGradient id="hgBt" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#6a6f74"/><stop offset="1" stop-color="#17191b"/></radialGradient>
+        <filter id="hgR" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9 .02" numOctaves="2" seed="3"/><feColorMatrix values="0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .22 0"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+        <filter id="hgG" x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="2.2"/></filter>
+      </defs>
+      <!-- carcaça com a janela recortada -->
+      <path fill="url(#hgM)" fill-rule="evenodd" d="M150 98 Q150 62 196 60 L804 60 Q850 62 850 98 L870 640 L130 640 Z M272 168 Q252 168 252 190 L252 410 Q252 432 274 432 L726 432 Q748 432 748 410 L748 190 Q748 168 728 168 Z"/>
+      <path fill="url(#hgL)" fill-rule="evenodd" d="M150 98 Q150 62 196 60 L804 60 Q850 62 850 98 L870 640 L130 640 Z M272 168 Q252 168 252 190 L252 410 Q252 432 274 432 L726 432 Q748 432 748 410 L748 190 Q748 168 728 168 Z"/>
+      <path filter="url(#hgR)" fill="#888" fill-rule="evenodd" d="M150 98 Q150 62 196 60 L804 60 Q850 62 850 98 L870 640 L130 640 Z M272 168 Q252 168 252 190 L252 410 Q252 432 274 432 L726 432 Q748 432 748 410 L748 190 Q748 168 728 168 Z"/>
+      <!-- chanfro interno (borda funda da janela) -->
+      <path fill="none" stroke="#0d0f10" stroke-width="10" d="M274 163 Q247 163 247 190 L247 410 Q247 437 274 437 L726 437 Q753 437 753 410 L753 190 Q753 163 726 163 Z"/>
+      <path fill="none" stroke="#8a8f94" stroke-width="2" opacity=".7" d="M276 154 Q238 154 238 192 L238 408 Q238 446 276 446 L724 446 Q762 446 762 408 L762 192 Q762 154 724 154 Z"/>
+      <!-- capô de cima e brilho -->
+      <path fill="none" stroke="#9aa0a5" stroke-width="3" opacity=".55" d="M170 92 Q172 72 200 71 L800 71 Q828 72 830 92"/>
+      <rect x="430" y="66" width="140" height="22" rx="5" fill="#2a2d30" stroke="#0f1112" stroke-width="2"/>
+      <!-- base com botões -->
+      <path fill="url(#hgB)" d="M300 470 L700 470 Q720 470 724 490 L734 560 L266 560 L276 490 Q280 470 300 470 Z"/>
+      <circle cx="372" cy="512" r="20" fill="url(#hgBt)" stroke="#0e0f10" stroke-width="3"/><circle cx="628" cy="512" r="20" fill="url(#hgBt)" stroke="#0e0f10" stroke-width="3"/>
+      <rect x="455" y="496" width="90" height="32" rx="8" fill="#26292c" stroke="#0e0f10" stroke-width="3"/><rect x="463" y="503" width="74" height="7" rx="3" fill="#3d4246"/>
+      <!-- parafusos -->
+      <g fill="#2a2d30" stroke="#777" stroke-width="1"><circle cx="190" cy="120" r="7"/><circle cx="810" cy="120" r="7"/><circle cx="182" cy="560" r="7"/><circle cx="818" cy="560" r="7"/></g>
+      <!-- vidro levemente azulado -->
+      <rect x="252" y="168" width="496" height="264" rx="22" fill="url(#hgV)"/>
+      <!-- ponto vermelho -->
+      <circle cx="500" cy="300" r="5" fill="#ff2a1a" filter="url(#hgG)" opacity=".9"/><circle cx="500" cy="300" r="2.2" fill="#ff6a50"/>
+    </svg>
+  </div>
+  <div class="hud-baixo">
+    <div class="vida"><svg viewBox="0 0 24 24"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z" fill="currentColor"/></svg><b id="hVida">100</b><div class="barra"><i id="hBarra"></i></div><span id="hColete" class="hcol" hidden></span></div>
+    <div class="municao"><small id="hArma">AUG A3</small><div><b id="hPente">30</b><span id="hReserva">/120</span></div></div>
+  </div>
+  <div id="morto" class="morto" hidden><h2>VOCÊ MORREU</h2><p id="mPor"></p><p class="cont">Renascendo em <b id="mCont">3</b></p></div>
+  <div id="tabela" class="tabela" hidden></div>
+  <!-- controles do celular -->
+  <div id="toque" class="toque">
+    <div id="joy" class="joy"><i id="joyP"></i></div>
+    <button class="tb tiro" id="bTiro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
+    <button class="tb tiro2" id="bTiro2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
+    <button class="tb mirar" id="bMira"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 6v3M12 15v3M6 12h3M15 12h3"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg></button>
+    <button class="tb pular" id="bPulo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 13l6-6 6 6M6 19l6-6 6 6"/></svg></button>
+    <button class="tb agachar" id="bAg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5l6 6 6-6M6 11l6 6 6-6"/></svg></button>
+    <button class="tb recarregar" id="bRec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg></button>
+    <button class="tb trocar" id="bTroca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg></button>
+    <button class="tb granada" id="bGr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="14" r="6"/><path d="M11 8V5h4l3 3M15 5l2-2"/></svg><small id="hGr">2</small></button>
+    <button class="tb placar-bt" id="bTab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg></button>
+    <button class="tb bomba-bt" id="bBomba" hidden>PLANTAR</button>
+    <button class="tb pegar-bt" id="bPegar" hidden>PEGAR</button>
+    <button class="tb graf-bt" id="bGraf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></button>
+  </div>
+</section>
+
+<!-- fim da partida -->
+<div id="fim" class="fim" hidden></div>
+<div id="promo" class="promo" hidden></div>
+<section id="loja" class="loja" hidden>
+  <header class="loja-topo"><h2>LOJA</h2><div class="moedas"><i class="moeda"></i><b id="jMoedas">0</b></div><button id="btFecharLoja" class="bt bt-pq">✕ FECHAR</button></header>
+  <div class="loja-corpo">
+    <div id="lojaLista" class="loja-lista"></div>
+    <div class="loja-vitrine">
+      <div class="vitrine-3d"><canvas id="lojaCanvas"></canvas><span class="girar-dica">⟲ arraste para girar</span></div>
+      <div class="vitrine-info">
+        <span id="vRar" class="raridade">LENDÁRIA</span>
+        <h3 id="vNome">—</h3><small id="vTipo">SNIPER</small>
+        <p id="vDesc" class="v-desc"></p>
+        <div id="vStats" class="v-stats"></div>
+        <div class="v-preco"><i class="moeda"></i><b id="vPreco">0</b></div>
+        <button id="vBotao" class="bt bt-ouro">COMPRAR</button>
+        <small id="vFalta" class="v-falta"></small>
+      </div>
+    </div>
+  </div>
+</section>
+<div id="janela" class="janela" hidden></div>
+<div id="aviso" class="aviso"></div>
+<div id="girar" class="girar"><p>↻ Vire o celular deitado</p></div>
+
+<script src="vendor/three.min.js"></script>
+<script src="shared/regras.js"></script>
+<script src="som.js"></script>
+<script src="mundo.js"></script>
+<script src="armas.js"></script>
+<script src="jogo.js"></script>
+</body>
+</html>

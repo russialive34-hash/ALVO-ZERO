@@ -1,0 +1,11 @@
+{
+  "appId": "com.alvozero.fps",
+  "appName": "Alvo Zero",
+  "webDir": "public",
+  "server": {
+    "url": "https://COLOQUE-SEU-SITE.onrender.com",
+    "androidScheme": "https",
+    "errorPath": "offline.html"
+  },
+  "android": { "allowMixedContent": false, "backgroundColor": "#0d1117" }
+}

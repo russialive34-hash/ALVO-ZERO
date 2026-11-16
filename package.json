@@ -1,0 +1,10 @@
+{
+  "name": "alvo-zero",
+  "version": "0.1.0",
+  "description": "ALVO ZERO: FPS online no navegador e celular, com salas, times, bots e headshot",
+  "private": true,
+  "main": "server/server.js",
+  "scripts": { "start": "node server/server.js", "test": "node test/servidor.test.js && node test/drops.test.js" },
+  "dependencies": { "ws": "^8.18.0" },
+  "engines": { "node": ">=18" }
+}
