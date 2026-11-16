@@ -16,6 +16,7 @@
 
 <!-- entrada -->
 <section id="tNick" class="tela nick">
+  <div class="n-heroi" id="nPrevia"></div>
   <div class="logo"><span>ALVO</span><b>ZERO</b></div>
   <p class="slogan">FPS ONLINE · SALAS · TIMES · HEADSHOT</p>
   <form id="fAuth" class="auth" autocomplete="on" onsubmit="return false">
@@ -39,20 +40,26 @@
     <div class="stats"><span>K <b id="lK">0</b></span><span>D <b id="lD">0</b></span><span>HS <b id="lHs">0</b></span><span>VIT <b id="lV">0</b></span></div>
     <button id="btSomL" class="bt-ic">🔊</button><button id="btSairConta" class="bt-ic" title="Sair da conta">⏻</button>
   </header>
-  <div class="lobby-corpo">
+  <div class="lobby-corpo mob">
+    <div class="l-heroi" id="lPrevia"><div class="l-heroi-nome"><b id="lHeroiNick">—</b><small id="lHeroiArma"></small></div></div>
+    <div class="l-cards">
+      <button class="cg cg-salas" id="cdPerso"><span class="cg-fundo"></span><span class="cg-tropa"><i></i><i></i><i></i></span><span class="cg-txt"><b>PERSONAGEM</b><small>visuais · coletes</small></span></button>
+      <button class="cg cg-arsenal" id="cdArsenal"><span class="cg-fundo"></span><img id="cdArmaImg" alt=""><span class="cg-txt"><b>ARMAS</b><small id="cdArmaNome"></small></span></button>
+      <button class="cg cg-loja" id="btLoja"><span class="cg-fundo"></span><span class="cg-ico">🛒</span><span class="cg-txt"><b>LOJA</b><small>novidades · kits · itens</small></span></button>
+    </div>
+  </div>
+  <footer class="l-baixo">
+    <div class="l-mini"><button id="btGraf" class="mini-bt" title="Configurações">⚙</button><button id="btCreditos" class="mini-bt" title="Créditos">ⓘ</button><button id="cdSalas" class="mini-bt largo">☰ SALAS <small id="cdSalasN"></small></button><button id="cdCriar" class="mini-bt largo">＋ CRIAR</button></div>
+    <button id="btRapida" class="bt-iniciar"><span>INICIAR</span><small>PARTIDA RÁPIDA</small></button>
+  </footer>
+  <!-- lista de salas (abre ao tocar em SALAS) -->
+  <div id="painelSalas" class="painel-salas" hidden>
+    <div class="ps-topo"><b>SALAS</b><button id="btAtualizar" class="bt bt-pq">↻ ATUALIZAR</button><button id="btCriar" class="bt bt-pq">＋ CRIAR</button><button id="btFecharSalas" class="bt bt-pq">✕</button></div>
     <div class="lista">
       <div class="lista-cab"><span>Nº</span><span>SALA</span><span>MODO</span><span>MAPA</span><span>JOG.</span><span>ESTADO</span></div>
       <div id="listaSalas" class="lista-linhas"></div>
     </div>
-    <div class="lado-bts">
-      <button id="btRapida" class="bt bt-ouro">⚡ PARTIDA RÁPIDA</button>
-      <button id="btLoja" class="bt bt-loja">🛒 LOJA</button>
-      <button id="btCriar" class="bt">＋ CRIAR SALA</button>
-      <button id="btEntrarSala" class="bt">▶ ENTRAR</button>
-      <button id="btAtualizar" class="bt">↻ ATUALIZAR</button>
-      <button id="btGraf" class="bt">⚙ CONFIGURAÇÕES</button>
-      <button id="btCreditos" class="bt bt-pq" style="margin-top:auto">CRÉDITOS</button>
-    </div>
+    <div class="ps-baixo"><button id="btEntrarSala" class="bt bt-ouro">▶ ENTRAR NA SALA</button></div>
   </div>
 </section>
 
@@ -60,22 +67,29 @@
 <section id="tSala" class="tela sala" hidden>
   <header class="topo"><b id="sNome">Sala</b><span id="sInfo" class="info"></span><button id="btSairSala" class="bt bt-pq">SAIR</button></header>
   <div class="sala-corpo">
-    <div class="time vermelho"><h3>VERMELHO</h3><div id="sVerm" class="vagas"></div></div>
-    <div class="meio">
+    <!-- seu personagem dentro do mapa (desenhado no 3D atrás desta área) -->
+    <div class="previa" id="sPrevia">
       <canvas id="sMapa" width="260" height="170"></canvas>
+      <div class="pv-arma"><button class="seta" id="pvAnt" aria-label="Arma anterior">◀</button><div><small id="pvTime">TIME</small><b id="pvArma">AUG A3</b></div><button class="seta" id="pvProx" aria-label="Próxima arma">▶</button></div>
+    </div>
+    <div class="painel">
+      <div class="times">
+        <div class="time vermelho"><h3>VERMELHO</h3><div id="sVerm" class="vagas"></div></div>
+        <div class="time azul"><h3>AZUL</h3><div id="sAzul" class="vagas"></div></div>
+      </div>
       <div class="conf">
         <label>MAPA<select id="cMapa"></select></label>
         <label>MODO<select id="cModo"></select></label>
         <label>META<select id="cMeta"><option>30</option><option selected>50</option><option>80</option><option>100</option><option>160</option></select></label>
         <label>TEMPO<select id="cTempo"><option value="5">5 min</option><option value="10" selected>10 min</option><option value="15">15 min</option><option value="20">20 min</option></select></label>
         <label>BOTS<select id="cBots"></select></label>
+        <label>DIFICULD.<select id="cDific"><option value="facil">Fácil</option><option value="normal">Normal</option><option value="dificil">Difícil</option></select></label>
       </div>
-      <div id="sArmas" class="armas-esc"></div>
+      <div id="sArmas" class="armas-esc" hidden></div>
       <div class="chat"><div id="sChat" class="chat-log"></div><form id="fChat"><input id="inChat" maxlength="120" placeholder="Mensagem…" autocomplete="off"><button class="bt bt-pq">➤</button></form></div>
     </div>
-    <div class="time azul"><h3>AZUL</h3><div id="sAzul" class="vagas"></div></div>
   </div>
-  <footer class="rodape-sala"><button id="btTrocarTime" class="bt">⇄ TROCAR TIME</button><button id="btPronto" class="bt bt-ouro">PRONTO</button></footer>
+  <footer class="rodape-sala"><button id="btTrocarTime" class="bt" hidden>⇄ TROCAR TIME</button><button id="btPronto" class="bt bt-ouro">PRONTO</button></footer>
 </section>
 
 <!-- partida -->
@@ -154,21 +168,18 @@
 <div id="fim" class="fim" hidden></div>
 <div id="promo" class="promo" hidden></div>
 <section id="loja" class="loja" hidden>
-  <header class="loja-topo"><h2>LOJA</h2><div class="moedas"><i class="moeda"></i><b id="jMoedas">0</b></div><button id="btFecharLoja" class="bt bt-pq">✕ FECHAR</button></header>
-  <div class="loja-corpo">
-    <div id="lojaLista" class="loja-lista"></div>
-    <div class="loja-vitrine">
-      <div class="vitrine-3d"><canvas id="lojaCanvas"></canvas><span class="girar-dica">⟲ arraste para girar</span></div>
-      <div class="vitrine-info">
-        <span id="vRar" class="raridade">LENDÁRIA</span>
-        <h3 id="vNome">—</h3><small id="vTipo">SNIPER</small>
-        <p id="vDesc" class="v-desc"></p>
-        <div id="vStats" class="v-stats"></div>
-        <div class="v-preco"><i class="moeda"></i><b id="vPreco">0</b></div>
-        <button id="vBotao" class="bt bt-ouro">COMPRAR</button>
-        <small id="vFalta" class="v-falta"></small>
-      </div>
-    </div>
+  <!-- esquerda: seu personagem dentro do mapa com o item escolhido -->
+  <div class="l-esq" id="lojaPrevia">
+    <div class="l-sel"><span id="vRar" class="raridade">PADRÃO</span><h3 id="vNome">—</h3><small id="vTipo"></small><p id="vDesc" class="v-desc"></p></div>
+    <div class="l-status"><h4>◈ STATUS</h4><div id="vStats" class="v-stats"></div></div>
+  </div>
+  <!-- direita: abas, filtros, grade de itens -->
+  <div class="l-dir">
+    <div class="l-abas" id="lAbas"></div>
+    <div class="l-sub" id="lSub"></div>
+    <div class="l-busca"><input id="lBusca" placeholder="Pesquisa" autocomplete="off"><button id="lLimpa" aria-label="Limpar">✕</button><span class="l-conta"><i class="moeda"></i><b id="jMoedas">0</b></span></div>
+    <div id="lojaLista" class="l-grade"></div>
+    <div class="l-rodape"><div class="v-preco"><i class="moeda"></i><b id="vPreco">0</b><small id="vFalta" class="v-falta"></small></div><button id="vBotao" class="bt bt-ouro">COMPRAR</button><button id="btFecharLoja" class="bt">SAIR</button></div>
   </div>
 </section>
 <div id="janela" class="janela" hidden></div>

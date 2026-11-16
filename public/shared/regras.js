@@ -3,7 +3,7 @@
   'use strict';
   var NOME = 'ALVO ZERO';
   var R = {
-    MAX_SALA: 16, TICK: 30, ENVIO: 20,
+    MAX_SALA: 20, MAX_TIME: 10, TICK: 30, ENVIO: 20,
     VEL: 5.6, VEL_AGACHADO: 2.6, VEL_MIRA: 3.4, PULO: 6.8, GRAV: 18,
     RAIO: 0.35, ALTURA: 1.75, ALTURA_AGACHADO: 1.2, OLHO: 1.6, OLHO_AGACHADO: 1.12, DEGRAU: 0.5,
     VIDA: 100, RENASCER: 3, PROTECAO: 2
@@ -33,8 +33,29 @@
   var SKINS = {
     scifi: { nome: 'Guerreira Sci-Fi', categoria: 'personagem', tipo: 'personagem', preco: 12000, raridade: 'ÉPICA', desc: 'Soldada do futuro com máscara tática e equipamento leve. Todo mundo vê você com ela na partida, nos dois times.' }
   };
-  function item(id) { return ARMAS[id] || COLETES[id] || SKINS[id] || null; }
-  var LOJA = ['ar9', 'vx45', 't12', 'b3', 'l7', 'arara', 'vb', 'colete1', 'colete2', 'colete3', 'scifi'];
+  // itens com tempo (bônus): duram alguns dias depois de comprados
+  var ITENS = {
+    xp2:      { nome: 'EXP em Dobro', categoria: 'item', tipo: 'item', dias: 3, efeito: 'xp', valor: 2, preco: 2500, raridade: 'RARA', icone: 'EXP x2', cor: '#d93a2b', desc: 'Toda a experiência das partidas vale o dobro por 3 dias.' },
+    moedas50: { nome: 'Moedas +50%', categoria: 'item', tipo: 'item', dias: 3, efeito: 'moedas', valor: 1.5, preco: 2000, raridade: 'RARA', icone: '+50%', cor: '#d9a514', desc: 'Ganhe 50% a mais de moedas no fim de cada partida por 3 dias.' },
+    troca15:  { nome: 'Troca Rápida 15%', categoria: 'item', tipo: 'item', dias: 7, efeito: 'troca', valor: 0.85, preco: 1500, raridade: 'COMUM', icone: 'QUICK', cor: '#1f8a6e', desc: 'Troca de arma 15% mais rápida por 7 dias.' },
+    hollow:   { nome: 'Munição Hollow Point', categoria: 'item', tipo: 'item', dias: 3, efeito: 'precisao', valor: 0.9, preco: 3000, raridade: 'ÉPICA', icone: 'HP', cor: '#3b6fd9', desc: 'Balas mais estáveis: 10% menos espalhamento por 3 dias.' }
+  };
+  function variante(base, id, nome, skin, preco, raridade, desc) { ARMAS[id] = Object.assign({}, ARMAS[base], { nome: nome, base: base, skin: skin, preco: preco, raridade: raridade, desc: desc }); PRIMARIAS.push(id); }
+  variante('vx45', 'vx45_cupido', 'VX-45 Cupido', 'cupido', 7000, 'RARA', 'Coleção Cupido: rosa e branca com corações. Mesmos atributos da VX-45.');
+  variante('vx45', 'vx45_neon', 'VX-45 Neon', 'neon', 7500, 'RARA', 'Coleção Neon: preta com faixas que brilham. Mesmos atributos da VX-45.');
+  variante('b3', 'b3_punk', 'B-3 Punk Wave', 'punk', 14000, 'ÉPICA', 'Coleção Punk Wave: grafite colorido. Mesmos atributos do B-3 Touro.');
+  variante('l7', 'l7_neon', 'L-7 Neon', 'neon', 16000, 'ÉPICA', 'Coleção Neon: sniper preta com faixas ciano e rosa. Mesmos atributos da L-7.');
+  variante('t12', 't12_brasa', 'T-12 Brasa', 'brasa', 11000, 'RARA', 'Coleção Brasa: laranja e preta com chamas. Mesmos atributos da T-12.');
+  // kits: vários itens juntos com desconto
+  var KITS = {
+    kit_inicio: { nome: 'Kit Iniciante', categoria: 'kit', tipo: 'kit', itens: ['vx45', 'colete1', 'xp2'], preco: 6500, raridade: 'COMUM', desc: 'VX-45 Vespa + Colete Leve + EXP em Dobro (3 dias). Economize 2.500.' },
+    kit_neon: { nome: 'Kit Neon', categoria: 'kit', tipo: 'kit', itens: ['vx45_neon', 'l7_neon', 'hollow'], preco: 21000, raridade: 'ÉPICA', desc: 'VX-45 Neon + L-7 Neon + Munição Hollow Point (3 dias). Economize 5.500.' },
+    kit_punk: { nome: 'Kit Punk Wave', categoria: 'kit', tipo: 'kit', itens: ['b3_punk', 'colete2', 'moedas50'], preco: 19000, raridade: 'ÉPICA', desc: 'B-3 Punk Wave + Colete Tático + Moedas +50% (3 dias). Economize 5.000.' },
+    kit_cupido: { nome: 'Kit Cupido', categoria: 'kit', tipo: 'kit', itens: ['vx45_cupido', 'troca15', 'xp2'], preco: 9000, raridade: 'RARA', desc: 'VX-45 Cupido + Troca Rápida (7 dias) + EXP em Dobro (3 dias). Economize 3.000.' }
+  };
+  function item(id) { return ARMAS[id] || COLETES[id] || SKINS[id] || ITENS[id] || KITS[id] || null; }
+  function itemAtivo(perfil, id) { return !!(perfil && perfil.itens && perfil.itens[id] > Date.now()); }
+  var LOJA = ['ar9', 'vx45', 't12', 'b3', 'l7', 'arara', 'vb', 'colete1', 'colete2', 'colete3', 'scifi', 'xp2', 'moedas50', 'troca15', 'hollow', 'vx45_cupido', 'vx45_neon', 'b3_punk', 'l7_neon', 't12_brasa', 'kit_inicio', 'kit_cupido', 'kit_punk', 'kit_neon'];
   ARMAS.vx45.preco = 4000; ARMAS.vx45.raridade = 'COMUM'; ARMAS.vx45.desc = 'Submetralhadora leve e rápida. Ótima de perto, cai o dano de longe.';
   ARMAS.t12.preco = 6000; ARMAS.t12.raridade = 'COMUM'; ARMAS.t12.desc = 'Escopeta de 9 chumbos. Um tiro de perto resolve.';
   ARMAS.b3.preco = 9000; ARMAS.b3.raridade = 'RARA'; ARMAS.b3.desc = 'Fuzil com mira 1.5x. Um pouco mais preciso que o AUG.';
@@ -42,12 +63,12 @@
   ARMAS.ar9.preco = 0; ARMAS.ar9.raridade = 'PADRÃO'; ARMAS.ar9.desc = 'Fuzil bullpup confiável. Rajada rápida e controle fácil.';
   // moedas ganhas no fim da partida
   function moedasPartida(kills, hs, venceu) { return 30 + kills * 6 + hs * 4 + (venceu ? 60 : 0); }
-  var MODOS = { time: 'Mata-mata em equipe', todos: 'Todos contra todos', bomba: 'Missão Bomba', elim: 'Eliminação', sniper: 'Só Sniper', faca: 'Só Faca' };
+  var MODOS = { time: 'Modo Tiro (todas as armas)', todos: 'Todos contra todos', bomba: 'Missão Bomba', elim: 'Eliminação (sem renascer)', sniper: 'Só Sniper', faca: 'Só Faca', pistola: 'Só Pistola' };
   // modos por rodada (sem renascer): quem ganhar RODADAS rodadas vence
   var RODADA = { bomba: { vencer: 5, tempo: 120 }, elim: { vencer: 5, tempo: 100 } };
   var BOMBA = { plantar: 3, desarmar: 5, explode: 35, raioLocal: 2.6, raioDesarmar: 1.6, raioExplosao: 9 };
   function porRodada(modo) { return !!RODADA[modo]; }
-  function contaKills(modo) { return modo === 'time' || modo === 'sniper' || modo === 'faca'; } // placar = kills do time
+  function contaKills(modo) { return modo === 'time' || modo === 'sniper' || modo === 'faca' || modo === 'pistola'; } // placar = kills do time
   /* ---------- patentes no estilo Point Blank: 55 níveis, cada um com sua insígnia ---------- */
   // [nome, quantos níveis (I, II, III...), tipo da insígnia]
   var GRUPOS = [
@@ -235,6 +256,6 @@
     }
     return { nx: nx, nz: nz, cel: cel, W: W, D: D, livre: livre, alt: alt };
   }
-  return { NOME: NOME, R: R, ARMAS: ARMAS, PRIMARIAS: PRIMARIAS, MODOS: MODOS, RODADA: RODADA, BOMBA: BOMBA, porRodada: porRodada, contaKills: contaKills, MAPAS: MAPAS, PATENTES: PATENTES, LOJA: LOJA, COLETES: COLETES, SKINS: SKINS, item: item, moedasPartida: moedasPartida, patente: patente, insignia: insignia, xpPara: xpPara,
+  return { NOME: NOME, R: R, ARMAS: ARMAS, PRIMARIAS: PRIMARIAS, MODOS: MODOS, RODADA: RODADA, BOMBA: BOMBA, porRodada: porRodada, contaKills: contaKills, MAPAS: MAPAS, PATENTES: PATENTES, LOJA: LOJA, COLETES: COLETES, SKINS: SKINS, ITENS: ITENS, KITS: KITS, itemAtivo: itemAtivo, item: item, moedasPartida: moedasPartida, patente: patente, insignia: insignia, xpPara: xpPara,
     colide: colide, mover: mover, raioMapa: raioMapa, raioCaixa: raioCaixa, raioEsfera: raioEsfera, hitbox: hitbox, olho: olho, dirDe: dirDe, grade: grade, chaoEm: chaoEm };
 });

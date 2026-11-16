@@ -52,7 +52,7 @@ const salas = new Map(); let nSala = 1, nId = 1;
 const agora = () => Date.now();
 function env(c, m) { if (c.ws && c.ws.readyState === 1) c.ws.send(JSON.stringify(m)); }
 function paraSala(s, m) { const t = JSON.stringify(m); for (const j of s.jogs.values()) if (j.ws && j.ws.readyState === 1) j.ws.send(t); }
-function resumoSala(s) { return { id: s.id, nome: s.nome, modo: s.modo, mapa: s.mapa, n: s.jogs.size, max: s.max, estado: s.estado, senha: !!s.senha, bots: s.bots }; }
+function resumoSala(s) { return { id: s.id, nome: s.nome, modo: s.modo, mapa: s.mapa, n: s.jogs.size, max: s.max, estado: s.estado, senha: !!s.senha, bots: s.bots, dific: s.dific || 'facil' }; }
 function listaSalas() { return [...salas.values()].map(resumoSala); }
 function avisarLobby() { const m = JSON.stringify({ t: 'salas', salas: listaSalas() }); for (const c of clientes.values()) if (!c.sala && c.ws.readyState === 1) c.ws.send(m); }
 function infoSala(s) {
@@ -63,10 +63,17 @@ function atualizarSala(s) { paraSala(s, infoSala(s)); avisarLobby(); }
 
 function criarSala(dono, op) {
   const s = { id: nSala++, nome: limpaTexto(op.nome, 24) || ('Sala de ' + dono.nome), modo: G.MODOS[op.modo] ? op.modo : 'time', mapa: G.MAPAS[op.mapa] ? op.mapa : 'biblioteca',
-    max: Math.max(2, Math.min(R.MAX_SALA, op.max | 0 || 16)), meta: [30, 50, 80, 100, 160].includes(op.meta | 0) ? op.meta | 0 : 50, tempo: [5, 10, 15, 20].includes(op.tempo | 0) ? op.tempo | 0 : 10,
-    senha: limpaTexto(op.senha, 12), bots: Math.max(0, Math.min(14, op.bots | 0)), dono: dono.id, jogs: new Map(), estado: 'espera', partida: null, chat: [] };
+    max: Math.max(2, Math.min(R.MAX_SALA, op.max | 0 || 20)), meta: [30, 50, 80, 100, 160].includes(op.meta | 0) ? op.meta | 0 : 50, tempo: [5, 10, 15, 20].includes(op.tempo | 0) ? op.tempo | 0 : 10,
+    senha: limpaTexto(op.senha, 12), bots: Math.max(0, Math.min(18, op.bots | 0)), dific: DIFIC[op.dific] ? op.dific : 'facil', dono: dono.id, jogs: new Map(), estado: 'espera', partida: null, chat: [] };
   salas.set(s.id, s); return s;
 }
+// dificuldade dos bots: reação (s), giro da mira, erro, ritmo de tiro, visão (m) e dano
+const DIFIC = {
+  facil:   { reacao: [0.8, 0.6], giro: 3, erro: 0.09, erroDist: 0.004, ritmoAuto: 2.6, ritmo: 1.9, visao: 30, dano: 0.6 },
+  normal:  { reacao: [0.5, 0.4], giro: 5, erro: 0.055, erroDist: 0.002, ritmoAuto: 2.0, ritmo: 1.4, visao: 40, dano: 0.85 },
+  dificil: { reacao: [0.35, 0.4], giro: 7, erro: 0.035, erroDist: 0.0012, ritmoAuto: 1.6, ritmo: 1.2, visao: 45, dano: 1 }
+};
+function dif(s) { return DIFIC[s.dific] || DIFIC.facil; }
 function timeComMenos(s) { let r = 0, b = 0; for (const j of s.jogs.values()) { if (j.time === 'r') r++; else if (j.time === 'b') b++; } return r <= b ? 'r' : 'b'; }
 function entrarSala(c, s) {
   if (c.sala) sairSala(c);
@@ -88,6 +95,7 @@ const NOMES_BOT = ['Falcão', 'Trovão', 'Sombra', 'Raio', 'Lobo', 'Cobra', 'Tig
 function encherBots(s) {
   for (const [id, j] of s.jogs) if (j.bot) s.jogs.delete(id);
   for (let i = 0; i < s.bots && s.jogs.size < s.max; i++) {
+    if (s.modo !== 'todos' && [...s.jogs.values()].filter(j => j.time === timeComMenos(s)).length >= R.MAX_TIME) break;
     const b = { id: nId++, bot: true, nome: 'BOT ' + NOMES_BOT[i % NOMES_BOT.length], time: timeComMenos(s), pronto: true, primaria: (function (r) { return r < 0.1 ? 'vb' : r < 0.2 ? 'arara' : 'ar9'; })(Math.random()), skin: Math.random() < 0.12 ? 'scifi' : null, colete: Math.random() < 0.35 ? ['colete1', 'colete2', 'colete3'][Math.floor(Math.random() * 3)] : null, pat: Math.floor(Math.random() * 28) };
     s.jogs.set(b.id, b);
   }
@@ -104,7 +112,7 @@ function pontoNasc(s, j) {
 function prepararJogador(s, j) {
   j.kills = j.kills || 0; j.mortesP = j.mortesP || 0; j.hs = j.hs || 0; j.assist = 0;
   if (!G.ARMAS[j.primaria] || G.ARMAS[j.primaria].slot !== 1 || (!j.bot && !temArma(j, j.primaria))) j.primaria = 'ar9';
-  j.primariaModo = s.modo === 'sniper' ? (G.ARMAS[j.primaria] && G.ARMAS[j.primaria].tipo === 'sniper' ? j.primaria : 'l7') : j.primaria;
+  j.primariaModo = s.modo === 'pistola' ? 'p9' : s.modo === 'sniper' ? (G.ARMAS[j.primaria] && G.ARMAS[j.primaria].tipo === 'sniper' ? j.primaria : 'l7') : j.primaria;
   renascer(s, j);
 }
 function renascer(s, j) {
@@ -115,6 +123,7 @@ function renascer(s, j) {
   const pr = j.primariaModo || j.primaria;
   if (s.modo === 'faca') { j.arma = 'faca'; j.mun = {}; j.granadas = 0; }
   else if (s.modo === 'sniper') { j.mun = { [pr]: { pente: A[pr].pente, reserva: A[pr].reserva } }; j.granadas = 0; }
+  else if (s.modo === 'pistola') { j.arma = 'p9'; j.mun = { p9: { pente: A.p9.pente, reserva: A.p9.reserva * 2 } }; j.granadas = 0; }
   else j.mun = { [pr]: { pente: A[pr].pente, reserva: A[pr].reserva }, p9: { pente: A.p9.pente, reserva: A.p9.reserva } };
   if (j.bot) { j.caminho = null; j.alvoId = null; j.reacao = 0; j.botT = 0; j.objetivo = null; }
 }
@@ -142,9 +151,9 @@ function terminarPartida(s, motivo) {
     let xp = j.kills * 10 + j.hs * 5 + 20;
     if (s.modo !== 'todos' && j.time === vencedor) xp += 60;
     if (s.modo === 'todos' && j === mvp) xp += 60;
-    const venceu = j.time === vencedor || (s.modo === 'todos' && j === mvp), moedas = G.moedasPartida(j.kills, j.hs, venceu);
+    const venceu = j.time === vencedor || (s.modo === 'todos' && j === mvp); let moedas = G.moedasPartida(j.kills, j.hs, venceu);
     if (!j.bot) { missao(j, 'partida', 1); if (venceu) missao(j, 'vitoria', 1); }
-    if (!j.bot) { const p = perfil(j.cod); p.moedas += moedas; p.xp += xp; p.kills += j.kills; p.mortes += j.mortesP; p.hs += j.hs; p.partidas++; if (j.time === vencedor || (s.modo === 'todos' && j === mvp)) p.vitorias++; }
+    if (!j.bot) { const p = perfil(j.cod); if (G.itemAtivo(p, 'xp2')) xp *= 2; if (G.itemAtivo(p, 'moedas50')) moedas = Math.round(moedas * 1.5); p.moedas += moedas; p.xp += xp; p.kills += j.kills; p.mortes += j.mortesP; p.hs += j.hs; p.partidas++; if (j.time === vencedor || (s.modo === 'todos' && j === mvp)) p.vitorias++; }
     return { id: j.id, nome: j.nome, time: j.time, kills: j.kills, mortes: j.mortesP, hs: j.hs, xp, moedas, bot: !!j.bot };
   });
   salvar();
@@ -256,7 +265,7 @@ function social_(c, m) {
   }
 }
 function missao(j, tipo, qtd, extra) { if (!j || j.bot || !j.cod || typeof registrarMissao !== 'function') return; registrarMissao(j, tipo, qtd, extra || {}); }
-function perfilPublico(c) { const p = perfil(c.cod), pt = G.patente(p.xp); const ms = missoesDe(p, c.cod), bn = bonusDe(p); return { tag: tagDe(c), missoes: ms.lista.map(m => Object.assign({}, MISSOES.find(x => x.id === m.id), m)), bonus: bn, bonusSeq: (p.bonus && p.bonus.seq) || 0, moedas: p.moedas, armas: p.armas.slice(), colete: p.colete || null, skin: p.skin || null, nome: c.nome, xp: p.xp, patente: pt.n, nomePatente: pt.nome, base: pt.base, prox: pt.prox, kills: p.kills, mortes: p.mortes, hs: p.hs, vitorias: p.vitorias, partidas: p.partidas }; }
+function perfilPublico(c) { const p = perfil(c.cod), pt = G.patente(p.xp); const ms = missoesDe(p, c.cod), bn = bonusDe(p); return { itens: p.itens || {}, tag: tagDe(c), missoes: ms.lista.map(m => Object.assign({}, MISSOES.find(x => x.id === m.id), m)), bonus: bn, bonusSeq: (p.bonus && p.bonus.seq) || 0, moedas: p.moedas, armas: p.armas.slice(), colete: p.colete || null, skin: p.skin || null, nome: c.nome, xp: p.xp, patente: pt.n, nomePatente: pt.nome, base: pt.base, prox: pt.prox, kills: p.kills, mortes: p.mortes, hs: p.hs, vitorias: p.vitorias, partidas: p.partidas }; }
 
 
 /* ---------- rodadas: Missão Bomba e Eliminação ---------- */
@@ -357,6 +366,7 @@ function pegarArma(s, c, idDrop) {
   const d = P.drops.find(x => x.id === idDrop); if (!d) return;
   if (Math.hypot(d.x - c.x, d.z - c.z) > 2.4 || Math.abs(d.y - c.y) > 1.6) return;
   if (s.modo === 'sniper' && A[d.arma].tipo !== 'sniper') return;
+  if (s.modo === 'pistola' && A[d.arma].tipo !== 'pistola') return;
   P.drops = P.drops.filter(x => x !== d); paraSala(s, { t: 'dropSome', id: d.id });
   const minha = principal(c); if (minha !== d.arma) largarArma(s, c, c.x + Math.sin(c.yaw) * 0.6, c.z + Math.cos(c.yaw) * 0.6); // troca: larga a sua
   c.armaPega = d.arma; c.mun[d.arma] = { pente: d.pente, reserva: d.reserva }; c.arma = d.arma; c.recarregandoAte = 0;
@@ -419,7 +429,7 @@ function atirar(s, j, d, chumbos) {
   const porAlvo = new Map();
   for (const a of acertos) { const x = porAlvo.get(a.alvo) || { d: 0, cab: false }; x.d += a.dano; x.cab = x.cab || a.cab; porAlvo.set(a.alvo, x); }
   for (const [alvo, x] of porAlvo) {
-    const matou = dano(s, alvo, j, x.d, j.arma, x.cab);
+    const matou = dano(s, alvo, j, x.d * (j.bot && !alvo.bot ? dif(s).dano : 1), j.arma, x.cab);
     if (!j.bot) env(j, { t: 'acerto', cab: x.cab, matou });
   }
 }
@@ -506,8 +516,8 @@ function pensarBot(s, b, dt) {
   // escolhe alvo visível mais perto
   if (b.botT <= 0) {
     b.botT = 0.25; let melhor = null, md = 1e9;
-    for (const o of s.jogs.values()) { if (!o.vivo || !inimigos(s, b, o)) continue; const d = Math.hypot(o.x - b.x, o.z - b.z); if (d < md && d < 45 && vejo(s, b, o)) { md = d; melhor = o; } }
-    if (melhor && melhor.id !== b.alvoId) { b.alvoId = melhor.id; b.reacao = 0.35 + Math.random() * 0.4; }
+    for (const o of s.jogs.values()) { if (!o.vivo || !inimigos(s, b, o)) continue; const d = Math.hypot(o.x - b.x, o.z - b.z); if (d < md && d < dif(s).visao && vejo(s, b, o)) { md = d; melhor = o; } }
+    if (melhor && melhor.id !== b.alvoId) { b.alvoId = melhor.id; b.reacao = dif(s).reacao[0] + Math.random() * dif(s).reacao[1]; }
     if (!melhor) b.alvoId = null;
     const urg = s.modo === 'bomba' && ((P.bomba && P.bomba.estado === 'plantada' && b.time === 'b' && b.ultObj !== 'plantada') || (P.portador === b.id && b.ultObj !== 'portador'));
     if (urg) { b.caminho = null; b.ultObj = P.portador === b.id ? 'portador' : 'plantada'; }
@@ -524,7 +534,7 @@ function pensarBot(s, b, dt) {
     const dx = alvo.x - b.x, dz = alvo.z - b.z, dy = (alvo.y + 1.3) - G.olho(b), dist = Math.hypot(dx, dz);
     const yawAlvo = Math.atan2(-dx, -dz), pitchAlvo = Math.atan2(dy, dist);
     let dif = yawAlvo - b.yaw; while (dif > Math.PI) dif -= Math.PI * 2; while (dif < -Math.PI) dif += Math.PI * 2;
-    b.yaw += dif * Math.min(1, dt * 7); b.pitch += (pitchAlvo - b.pitch) * Math.min(1, dt * 7);
+    b.yaw += dif * Math.min(1, dt * DIFIC[s.dific || 'facil'].giro); b.pitch += (pitchAlvo - b.pitch) * Math.min(1, dt * DIFIC[s.dific || 'facil'].giro);
     b.reacao -= dt;
     // anda de lado enquanto atira
     b.lado = b.lado || 1; if (Math.random() < dt * 0.8) b.lado *= -1;
@@ -534,8 +544,8 @@ function pensarBot(s, b, dt) {
     const arma = A[b.arma];
     if (b.reacao <= 0 && Math.abs(dif) < 0.15 && (arma.tipo !== 'faca' || dist < 1.9)) {
       if (arma.tipo !== 'faca' && b.mun[b.arma] && b.mun[b.arma].pente <= 0) { if (agora() > b.recarregandoAte) { const m = b.mun[b.arma], q = Math.min(arma.pente, m.reserva || arma.pente); m.pente = q; m.reserva = Math.max(0, m.reserva - q); b.recarregandoAte = agora() + arma.recarga * 1000; } }
-      else if (agora() - b.ultTiro > arma.cadencia * 1000 * (arma.auto ? 1.6 : 1.2)) {
-        const erro = 0.035 + dist * 0.0012, d = G.dirDe(b.yaw + (Math.random() - 0.5) * erro, b.pitch + (Math.random() - 0.5) * erro);
+      else if (agora() - b.ultTiro > arma.cadencia * 1000 * (arma.auto ? DIFIC[s.dific || 'facil'].ritmoAuto : DIFIC[s.dific || 'facil'].ritmo)) {
+        const erro = DIFIC[s.dific || 'facil'].erro + dist * DIFIC[s.dific || 'facil'].erroDist, d = G.dirDe(b.yaw + (Math.random() - 0.5) * erro, b.pitch + (Math.random() - 0.5) * erro);
         const chumbos = arma.chumbos ? Array.from({ length: arma.chumbos }, () => G.dirDe(b.yaw + (Math.random() - 0.5) * arma.disp * 2, b.pitch + (Math.random() - 0.5) * arma.disp * 2)) : null;
         atirar(s, b, d, chumbos);
       }
@@ -614,7 +624,11 @@ function receber(c, m) {
       else { const ns = criarSala(c, { nome: 'Partida Rápida', modo: 'time', mapa: (function () { var k = Object.keys(G.MAPAS); return k[Math.floor(Math.random() * k.length)]; })(), bots: 7, meta: 50, tempo: 10 }); entrarSala(c, ns); iniciarPartida(ns); }
       break; }
     case 'sair': sairSala(c); env(c, { t: 'salas', salas: listaSalas() }); env(c, { t: 'perfil', perfil: perfilPublico(c) }); break;
-    case 'time': if (s && s.estado === 'espera' && (m.time === 'r' || m.time === 'b')) { c.time = m.time; atualizarSala(s); } break;
+    case 'time': if (s && s.estado === 'espera' && (m.time === 'r' || m.time === 'b') && c.time !== m.time) {
+      const noTime = [...s.jogs.values()].filter(j => j.time === m.time && !j.bot).length;
+      if (noTime >= R.MAX_TIME) return env(c, { t: 'erro', txt: 'Esse time está cheio (' + R.MAX_TIME + '/' + R.MAX_TIME + ')' });
+      c.time = m.time; atualizarSala(s);
+    } break;
     case 'pronto': if (s && s.estado === 'espera') { c.pronto = !c.pronto; atualizarSala(s); } break;
     case 'arma': if (G.ARMAS[m.arma] && G.ARMAS[m.arma].slot === 1 && temArma(c, m.arma)) { c.primaria = m.arma; if (s) atualizarSala(s); } break;
     case 'colete': { if (!c.cod) return; const p = perfil(c.cod); if (m.id === null || (G.COLETES[m.id] && p.armas.includes(m.id))) { p.colete = m.id; salvar(); env(c, { t: 'perfil', perfil: perfilPublico(c) }); if (s) atualizarSala(s); } break; }
@@ -626,6 +640,18 @@ function receber(c, m) {
     case 'comprar': {
       const a = G.item(m.arma); if (!a || !G.LOJA.includes(m.arma) || !c.cod) return;
       const p = perfil(c.cod);
+      if (G.KITS[m.arma]) { // kit: entrega tudo que ainda não tem
+        if (p.moedas < a.preco) return env(c, { t: 'erro', txt: 'Moedas insuficientes: faltam ' + (a.preco - p.moedas) });
+        if (a.itens.every(k => !G.ITENS[k] && p.armas.includes(k))) return env(c, { t: 'erro', txt: 'Você já tem tudo desse kit' });
+        p.moedas -= a.preco; p.itens = p.itens || {};
+        for (const k of a.itens) { if (G.ITENS[k]) p.itens[k] = Math.max(Date.now(), p.itens[k] || 0) + G.ITENS[k].dias * 86400000; else if (!p.armas.includes(k)) p.armas.push(k); }
+        salvar(); env(c, { t: 'comprou', arma: m.arma }); env(c, { t: 'perfil', perfil: perfilPublico(c) }); break;
+      }
+      if (G.ITENS[m.arma]) { // item com tempo: soma dias
+        if (p.moedas < a.preco) return env(c, { t: 'erro', txt: 'Moedas insuficientes: faltam ' + (a.preco - p.moedas) });
+        p.moedas -= a.preco; p.itens = p.itens || {}; p.itens[m.arma] = Math.max(Date.now(), p.itens[m.arma] || 0) + a.dias * 86400000; salvar();
+        env(c, { t: 'comprou', arma: m.arma }); env(c, { t: 'perfil', perfil: perfilPublico(c) }); break;
+      }
       if (p.armas.includes(m.arma)) return env(c, { t: 'erro', txt: 'Você já tem esse item' });
       if (p.moedas < a.preco) return env(c, { t: 'erro', txt: 'Moedas insuficientes: faltam ' + (a.preco - p.moedas) });
       p.moedas -= a.preco; p.armas.push(m.arma); if (G.COLETES[m.arma]) p.colete = m.arma; if (G.SKINS[m.arma]) p.skin = m.arma; salvar();
@@ -634,7 +660,7 @@ function receber(c, m) {
     case 'config': if (s && s.dono === c.id && s.estado === 'espera') {
       if (G.MAPAS[m.mapa]) s.mapa = m.mapa; if (G.MODOS[m.modo]) s.modo = m.modo;
       if ([30, 50, 80, 100, 160].includes(m.meta | 0)) s.meta = m.meta | 0; if ([5, 10, 15, 20].includes(m.tempo | 0)) s.tempo = m.tempo | 0;
-      if (m.bots != null) s.bots = Math.max(0, Math.min(14, m.bots | 0)); atualizarSala(s);
+      if (m.bots != null) s.bots = Math.max(0, Math.min(18, m.bots | 0)); if (DIFIC[m.dific]) s.dific = m.dific; atualizarSala(s);
     } break;
     case 'iniciar': if (s && s.dono === c.id && s.estado === 'espera') iniciarPartida(s); break;
     case 'chat': if (s) { const txt = limpaTexto(m.txt, 120); if (txt) paraSala(s, { t: 'chat', nome: c.nome, time: c.time, txt }); } break;
@@ -646,7 +672,7 @@ function receber(c, m) {
       c.x = x; c.y = y; c.z = z; c.yaw = +m.yaw; c.pitch = Math.max(-1.5, Math.min(1.5, +m.pitch)); c.agachado = !!m.ag;
     } break;
     case 'pegar': if (s && s.partida) pegarArma(s, c, m.id); break;
-    case 'trocar': if (s && c.vivo && (s.modo === 'faca' ? m.arma === 'faca' : s.modo === 'sniper' ? (m.arma === (c.armaPega || c.primariaModo) || m.arma === 'faca') : (m.arma === (c.armaPega || c.primariaModo || c.primaria) || m.arma === 'p9' || m.arma === 'faca' || m.arma === 'gr'))) { c.arma = m.arma; } break;
+    case 'trocar': if (s && c.vivo && (s.modo === 'faca' ? m.arma === 'faca' : s.modo === 'pistola' ? (m.arma === 'p9' || m.arma === 'faca') : s.modo === 'sniper' ? (m.arma === (c.armaPega || c.primariaModo) || m.arma === 'faca') : (m.arma === (c.armaPega || c.primariaModo || c.primaria) || m.arma === 'p9' || m.arma === 'faca' || m.arma === 'gr'))) { c.arma = m.arma; } break;
     case 'acao': if (s && s.estado === 'jogo') acaoBomba(s, c, m.tipo, !!m.on); break;
     case 'tiro': if (s && s.estado === 'jogo' && m.d) { if (+m.yaw === +m.yaw) c.yaw = +m.yaw; atirar(s, c, m.d, m.c); } break;
     case 'recarregar': if (s && c.vivo) { const a = A[c.arma], mu = c.mun[c.arma]; if (a && mu && mu.pente < a.pente && mu.reserva > 0 && agora() > c.recarregandoAte) { c.recarregandoAte = agora() + a.recarga * 1000; setTimeout(() => { const q = Math.min(a.pente - mu.pente, mu.reserva); mu.pente += q; mu.reserva -= q; }, a.recarga * 1000 - 50); } } break;

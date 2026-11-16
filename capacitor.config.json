@@ -3,9 +3,10 @@
   "appName": "Alvo Zero",
   "webDir": "public",
   "server": {
-    "url": "https://COLOQUE-SEU-SITE.onrender.com",
+    "url": "https://alvo-zero.onrender.com",
     "androidScheme": "https",
-    "errorPath": "offline.html"
+    "errorPath": "offline.html",
+    "allowNavigation": ["alvo-zero.onrender.com"]
   },
   "android": { "allowMixedContent": false, "backgroundColor": "#0d1117" }
 }

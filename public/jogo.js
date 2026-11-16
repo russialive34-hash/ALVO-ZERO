@@ -13,10 +13,10 @@
   /* ---------- 3D ---------- */
   /* ---------- opções de gráfico (salvas no aparelho) ---------- */
   var NIVEIS = {
-    baixo: { nome: 'BAIXO', res: 0.75, sombra: 0, aniso: 1, dica: 'Mais FPS. Sem sombras, imagem mais simples.' },
-    medio: { nome: 'MÉDIO', res: 1, sombra: 1, aniso: 2, dica: 'Equilibrado: sombras e boa imagem.' },
-    alto: { nome: 'ALTO', res: 1.5, sombra: 2, aniso: 4, dica: 'Sombras nítidas e imagem mais definida.' },
-    ultra: { nome: 'ULTRA', res: 2, sombra: 2, aniso: 8, suave: true, dica: 'Máximo detalhe e bordas lisas (celular forte). Bordas lisas valem ao reabrir o jogo.' }
+    baixo: { nome: 'BAIXO', res: 0.7, sombra: 0, aniso: 1, cadaSombra: 0, dica: 'Mais FPS. Sem sombras, imagem mais simples.' },
+    medio: { nome: 'MÉDIO', res: 0.9, sombra: 1, aniso: 2, cadaSombra: 4, dica: 'Equilibrado: sombras e boa imagem.' },
+    alto: { nome: 'ALTO', res: 1.25, sombra: 2, aniso: 4, cadaSombra: 2, dica: 'Sombras nítidas e imagem mais definida.' },
+    ultra: { nome: 'ULTRA', res: 2, sombra: 2, aniso: 8, suave: true, cadaSombra: 1, dica: 'Máximo detalhe e bordas lisas (celular forte). Bordas lisas valem ao reabrir o jogo.' }
   };
   var graf = { nivel: ler('az_graf') || (celular ? 'medio' : 'alto'), brilho: +(ler('az_brilho') || 1.05), cheia: ler('az_cheia') ? ler('az_cheia') === '1' : celular };
   if (!NIVEIS[graf.nivel]) graf.nivel = 'medio';
@@ -41,9 +41,25 @@
   function ajustar() { var w = innerWidth, h = innerHeight; renderer.setSize(w, h); cam.aspect = camMao.aspect = w / h; cam.updateProjectionMatrix(); camMao.updateProjectionMatrix(); }
   addEventListener('resize', ajustar); ajustar();
   var qualidade = NIVEIS[graf.nivel].sombra;
+  // desempenho: a sombra não precisa ser refeita todo quadro; e a resolução se ajusta sozinha se o celular engasgar
+  renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = true;
+  AR.sombraPersonagens = NIVEIS[graf.nivel].sombra > 1;
+  var dinRes = 1, fpsMedia = 60, quadroN = 0;
+  function resolucaoAuto(dt) {
+    fpsMedia += (1 / Math.max(dt, 0.001) - fpsMedia) * 0.05;
+    if (++quadroN % 45) return; var n = NIVEIS[graf.nivel], ant = dinRes;
+    if (fpsMedia < 40 && dinRes > 0.55) dinRes = Math.max(0.55, dinRes - 0.1);
+    else if (fpsMedia > 56 && dinRes < 1) dinRes = Math.min(1, dinRes + 0.05);
+    if (ant !== dinRes) { renderer.setPixelRatio(Math.min(devicePixelRatio || 1, n.res) * dinRes); ajustar(); }
+  }
+  // só muda o HTML quando o valor muda (evita trabalho extra do navegador a cada quadro)
+  var cacheHud = {};
+  function hudTxt(id, v) { if (cacheHud[id] === v) return; cacheHud[id] = v; $(id).textContent = v; }
+  function hudOculto(id, v) { var k = 'h_' + id; if (cacheHud[k] === v) return; cacheHud[k] = v; $(id).hidden = v; }
   function aplicarGraficos() {
     var n = NIVEIS[graf.nivel]; qualidade = n.sombra;
-    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, n.res));
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, n.res) * (typeof dinRes === 'number' ? dinRes : 1)); AR.sombraPersonagens = n.sombra > 1;
+    cena.traverse(function (o) { if (o.isSkinnedMesh) o.castShadow = n.sombra > 1; });
     renderer.shadowMap.enabled = n.sombra > 0; renderer.shadowMap.type = n.suave ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap; renderer.shadowMap.needsUpdate = true;
     renderer.toneMappingExposure = graf.brilho;
     AR.anisotropia = Math.min(n.aniso, renderer.capabilities.getMaxAnisotropy());
@@ -70,7 +86,7 @@
 
   /* ---------- fundo do menu: mapa girando devagar ---------- */
   var mundoAtual = null, mapaAtual = null;
-  function carregarMapa(id) {
+  function carregarMapa(id) { renderer.shadowMap.needsUpdate = true;
     if (mapaAtual && mapaAtual.id === id) return;
     while (cena.children.length) cena.remove(cena.children[0]);
     mapaAtual = G.MAPAS[id]; mundoAtual = MU.montar(cena, mapaAtual, qualidade); S.ambiente(!mapaAtual.ceu);
@@ -119,7 +135,7 @@
       case 'dano': eu.vida = m.vida; levarDano(m); break;
       case 'morte': morte(m); break;
       case 'nasceu': nasceu(m); break;
-      case 'mun': eu.mun = m.mun; eu.granadas = m.granadas; if (partida && partida.modo !== 'faca') { var pk = Object.keys(m.mun).filter(function (k) { return k !== 'p9'; })[0]; if (pk) eu.primaria = pk; } trocarArma(m.arma, true); break;
+      case 'mun': eu.mun = m.mun; eu.granadas = m.granadas; if (partida && partida.modo === 'pistola') eu.primaria = 'p9'; else if (partida && partida.modo !== 'faca') { var pk = Object.keys(m.mun).filter(function (k) { return k !== 'p9'; })[0]; if (pk) eu.primaria = pk; } trocarArma(m.arma, true); break;
       case 'drop': novoDrop(m.d); break;
       case 'dropSome': tirarDrop(m.id); break;
       case 'drops': limparDrops(); (m.lista || []).forEach(novoDrop); break;
@@ -210,7 +226,7 @@
   };
   function opcoesMapa(sel) { return Object.keys(G.MAPAS).map(function (k) { return '<option value="' + k + '"' + (k === sel ? ' selected' : '') + '>' + G.MAPAS[k].nome + '</option>'; }).join(''); }
   function opcoesModo(sel) { return Object.keys(G.MODOS).map(function (k) { return '<option value="' + k + '"' + (k === sel ? ' selected' : '') + '>' + G.MODOS[k] + '</option>'; }).join(''); }
-  function opcoesBots(sel) { var o = ''; for (var i = 0; i <= 14; i++) o += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>' + i + '</option>'; return o; }
+  function opcoesBots(sel) { var o = ''; for (var i = 0; i <= 18; i++) o += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>' + i + '</option>'; return o; }
   function janelaGraficos() {
     janela('<h3>CONFIGURAÇÕES</h3><h5>GRÁFICOS</h5><div class="niveis">' + Object.keys(NIVEIS).map(function (k) { return '<button class="bt' + (k === graf.nivel ? ' bt-ouro' : '') + '" data-n="' + k + '">' + NIVEIS[k].nome + '</button>'; }).join('') + '</div>' +
       '<p class="g-dica" id="gDica">' + NIVEIS[graf.nivel].dica + '</p>' +
@@ -248,7 +264,7 @@
     [].forEach.call($('sArmas').children, function (b) { b.onclick = function () { equipar(b.dataset.a); S.troca(); }; });
     marcarArma();
   }
-  function equipar(k) { if (minhasArmas().indexOf(k) < 0) return; minhaArma = k; gravar('az_arma', k); mandar({ t: 'arma', arma: k }); marcarArma(); }
+  function equipar(k) { if (minhasArmas().indexOf(k) < 0) return; minhaArma = k; setTimeout(function () { if ($('loja').hidden) montarPrevia({}); }, 0); gravar('az_arma', k); mandar({ t: 'arma', arma: k }); marcarArma(); }
   desenharArmasSala();
   function marcarArma() { [].forEach.call($('sArmas').children, function (b) { b.classList.toggle('on', b.dataset.a === minhaArma); }); }
   function desenharSala() {
@@ -256,17 +272,22 @@
     $('sNome').textContent = String(s.id).padStart(3, '0') + ' · ' + s.nome; $('sInfo').textContent = G.MODOS[s.modo] + ' · ' + G.MAPAS[s.mapa].nome + ' · meta ' + s.meta + ' · ' + s.tempo + ' min' + (s.estado === 'jogo' ? ' · EM JOGO' : '');
     function vagas(time) {
       var l = s.jogs.filter(function (j) { return s.modo === 'todos' || j.time === time; }), html = '';
-      for (var i = 0; i < 8; i++) { var j = l[i]; html += j ? '<div class="vaga' + (j.id === meuId ? ' eu' : '') + (j.id === s.dono ? ' dono' : '') + '"><i class="pat">' + G.insignia(j.pat) + '</i>' + esc((j.tag ? '[' + j.tag + '] ' : '') + j.nome) + '<span class="ok">' + (j.id === s.dono ? 'DONO' : j.pronto ? 'PRONTO' : '') + '</span></div>' : '<div class="vaga vazia">—</div>'; }
+      var vagasN = s.modo === 'todos' ? R.MAX_SALA : R.MAX_TIME;
+      for (var i = 0; i < vagasN; i++) { var j = l[i]; html += j ? '<div class="vaga' + (j.id === meuId ? ' eu' : '') + (j.id === s.dono ? ' dono' : '') + '"><i class="pat">' + G.insignia(j.pat) + '</i>' + esc((j.tag ? '[' + j.tag + '] ' : '') + j.nome) + '<span class="ok">' + (j.id === s.dono ? 'DONO' : j.pronto ? 'PRONTO' : '') + '</span></div>' : '<div class="vaga vazia" data-time="' + time + '">' + (s.estado === 'espera' && s.modo !== 'todos' ? '＋ entrar neste time' : '—') + '</div>'; }
       return html;
     }
     $('sVerm').innerHTML = vagas('r'); $('sAzul').innerHTML = vagas('b');
-    ['cMapa', 'cModo', 'cMeta', 'cTempo', 'cBots'].forEach(function (id) { $(id).disabled = !souDono || s.estado !== 'espera'; });
+    // contagem de cada time e clique numa vaga livre para trocar de lado
+    if (s.modo !== 'todos') { var nr = s.jogs.filter(function (j) { return j.time === 'r'; }).length, nb = s.jogs.filter(function (j) { return j.time === 'b'; }).length;
+      document.querySelector('.time.vermelho h3').textContent = 'VERMELHO ' + nr + '/' + R.MAX_TIME; document.querySelector('.time.azul h3').textContent = 'AZUL ' + nb + '/' + R.MAX_TIME; }
+    [].forEach.call(document.querySelectorAll('.vaga.vazia[data-time]'), function (v) { v.onclick = function () { var e3 = s.jogs.find(function (j) { return j.id === meuId; }); if (e3 && e3.time !== v.dataset.time && s.estado === 'espera') { S.clicar(); mandar({ t: 'time', time: v.dataset.time }); } }; });
+    ['cMapa', 'cModo', 'cMeta', 'cTempo', 'cBots', 'cDific'].forEach(function (id) { $(id).disabled = !souDono || s.estado !== 'espera'; }); $('cDific').value = s.dific || 'facil';
     $('cMapa').value = s.mapa; $('cModo').value = s.modo; $('cMeta').value = s.meta; $('cTempo').value = s.tempo; $('cBots').value = s.bots;
     var eu2 = s.jogs.find(function (j) { return j.id === meuId; });
     $('btPronto').textContent = souDono ? 'INICIAR' : (eu2 && eu2.pronto ? 'PRONTO ✓' : 'PRONTO'); $('btPronto').classList.toggle('ativo', !!(eu2 && eu2.pronto && !souDono));
-    marcarArma(); desenharMiniMapa($('sMapa'), G.MAPAS[s.mapa]); carregarMapa(s.mapa);
+    marcarArma(); desenharMiniMapa($('sMapa'), G.MAPAS[s.mapa]); carregarMapa(s.mapa); if ($('loja').hidden) montarPrevia({});
   }
-  ['cMapa', 'cModo', 'cMeta', 'cTempo', 'cBots'].forEach(function (id) { $(id).onchange = function () { mandar({ t: 'config', mapa: $('cMapa').value, modo: $('cModo').value, meta: +$('cMeta').value, tempo: +$('cTempo').value, bots: +$('cBots').value }); }; });
+  ['cMapa', 'cModo', 'cMeta', 'cTempo', 'cBots', 'cDific'].forEach(function (id) { $(id).onchange = function () { mandar({ t: 'config', dific: $('cDific').value, mapa: $('cMapa').value, modo: $('cModo').value, meta: +$('cMeta').value, tempo: +$('cTempo').value, bots: +$('cBots').value }); }; });
   $('btPronto').onclick = function () { S.clicar(); if (salaInfo && salaInfo.dono === meuId) mandar({ t: 'iniciar' }); else mandar({ t: 'pronto' }); };
   $('btTrocarTime').onclick = function () { var e2 = salaInfo && salaInfo.jogs.find(function (j) { return j.id === meuId; }); if (e2) mandar({ t: 'time', time: e2.time === 'r' ? 'b' : 'r' }); };
   $('btSairSala').onclick = function () { mandar({ t: 'sair' }); salaInfo = null; estado = 'lobby'; mostrar('tLobby'); };
@@ -282,73 +303,129 @@
     g.restore();
   }
 
-  /* ---------- loja: arma em 3D girando, atributos, preço ---------- */
-  var lojaSel = 'vb', loja3d = null;
-  function barra(nome, v) { v = Math.max(0.04, Math.min(1, v)); return '<div class="st"><span>' + nome + '</span><div><i style="width:' + (v * 100).toFixed(0) + '%"></i></div></div>'; }
+  /* ---------- loja (estilo das referências): personagem à esquerda, grade de itens à direita ---------- */
+  var lojaSel = 'kit_neon', lojaAba = 'novo', lojaSub = 'tudo', lojaBusca = '', telaAntesLoja = null;
+  var NOVOS = ['kit_neon', 'kit_punk', 'kit_cupido', 'b3_punk', 'l7_neon', 'vx45_neon', 'vx45_cupido', 't12_brasa', 'hollow', 'xp2'];
+  var ABAS = { novo: 'NOVIDADES', arma: 'ARMA', personagem: 'PERSONAGEM', colete: 'COLETE', item: 'ITEM', kit: 'KITS' };
+  var SUBS = { tudo: 'VER TUDO', fuzil: 'FUZIL', smg: 'SUBMETRALHADORA', sniper: 'SNIPER', escopeta: 'ESCOPETA' };
+  function barra(nome, v, num) { v = Math.max(0.04, Math.min(1, v)); return '<div class="st"><span>' + nome + '</span><div><i style="width:' + (v * 100).toFixed(0) + '%"></i></div><b>' + (num != null ? num : Math.round(v * 100)) + '</b></div>'; }
   function rarClasse(r) { return r === 'LENDÁRIA' ? 'lend' : r === 'ÉPICA' ? 'epica' : r === 'RARA' ? 'rara' : 'pad'; }
-  function temItem(k) { return k === 'ar9' || !!(perfil && perfil.armas && perfil.armas.indexOf(k) >= 0); }
-  function usando(k) { return G.COLETES[k] ? !!(perfil && perfil.colete === k) : G.SKINS[k] ? !!(perfil && perfil.skin === k) : k === minhaArma; }
-  function categoria(k) { return G.COLETES[k] ? 'colete' : G.SKINS[k] ? 'personagem' : 'arma'; }
-  var lojaAba = 'arma', ABAS = { arma: 'ARMAS', colete: 'COLETES', personagem: 'PERSONAGENS' };
+  function categoria(k) { return G.KITS[k] ? 'kit' : G.ITENS[k] ? 'item' : G.COLETES[k] ? 'colete' : G.SKINS[k] ? 'personagem' : 'arma'; }
+  function diasRestam(k) { var t = perfil && perfil.itens && perfil.itens[k]; return t && t > Date.now() ? Math.ceil((t - Date.now()) / 86400000) : 0; }
+  function temItem(k) {
+    if (G.KITS[k]) return G.KITS[k].itens.every(function (x) { return G.ITENS[x] || temItem(x); });
+    if (G.ITENS[k]) return diasRestam(k) > 0;
+    return k === 'ar9' || !!(perfil && perfil.armas && perfil.armas.indexOf(k) >= 0);
+  }
+  function usando(k) { return G.COLETES[k] ? !!(perfil && perfil.colete === k) : G.SKINS[k] ? !!(perfil && perfil.skin === k) : G.ITENS[k] ? diasRestam(k) > 0 : k === minhaArma; }
+  // fotos dos itens: desenhadas uma vez com a própria tela 3D do jogo e guardadas
+  var fotos = {}, filaFotos = [], fotoCena = new THREE.Scene(), fotoCam = new THREE.PerspectiveCamera(28, 1.6, 0.01, 50), fotoRT = null;
+  fotoCena.add(new THREE.HemisphereLight(0xffffff, 0x303844, 1.1)); (function () { var l = new THREE.DirectionalLight(0xffffff, 1.4); l.position.set(2, 3, 2); fotoCena.add(l); var l2 = new THREE.DirectionalLight(0x9cc8ff, 0.7); l2.position.set(-3, 1, -2); fotoCena.add(l2); })();
+  function fotoIcone(k) {
+    var a = G.item(k), c = document.createElement('canvas'); c.width = 256; c.height = 160; var g = c.getContext('2d');
+    if (G.KITS[k]) {
+      g.fillStyle = '#1b2633'; g.fillRect(28, 26, 200, 108); g.strokeStyle = '#f2b53a'; g.lineWidth = 4; g.strokeRect(28, 26, 200, 108);
+      g.fillStyle = '#f2b53a'; g.fillRect(28, 26, 64, 26); g.fillStyle = '#1d1405'; g.font = '900 18px Impact, sans-serif'; g.fillText('KIT', 44, 46);
+      g.fillStyle = '#e6edf3'; g.font = '700 15px system-ui'; a.itens.forEach(function (x, i) { g.fillText('• ' + G.item(x).nome, 40, 76 + i * 20); });
+    } else {
+      var gr = g.createLinearGradient(0, 30, 0, 130); gr.addColorStop(0, a.cor || '#3b6fd9'); gr.addColorStop(1, '#101820'); g.fillStyle = gr;
+      g.beginPath(); g.moveTo(60, 30); g.lineTo(196, 30); g.quadraticCurveTo(212, 30, 212, 46); g.lineTo(212, 114); g.quadraticCurveTo(212, 130, 196, 130); g.lineTo(60, 130); g.quadraticCurveTo(44, 130, 44, 114); g.lineTo(44, 46); g.quadraticCurveTo(44, 30, 60, 30); g.fill();
+      g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 3; g.stroke(); g.fillStyle = '#fff'; g.font = '900 30px Impact, sans-serif'; g.textAlign = 'center'; g.fillText(a.icone || '?', 128, 92);
+    }
+    return c.toDataURL();
+  }
+  function fotografar(obj, frente) {
+    if (!fotoRT) { fotoRT = new THREE.WebGLRenderTarget(256, 160); fotoRT.texture.encoding = THREE.sRGBEncoding; }
+    var caixa = new THREE.Box3().setFromObject(obj), cen = caixa.getCenter(new THREE.Vector3()), tam = caixa.getSize(new THREE.Vector3()), raio = Math.max(tam.x, tam.y, tam.z) * 0.62;
+    fotoCena.add(obj);
+    if (frente) fotoCam.position.set(cen.x, cen.y + raio * 0.1, cen.z - raio * 3.4); else fotoCam.position.set(cen.x + raio * 2.25, cen.y + raio * 0.35, cen.z + raio * 0.25);
+    fotoCam.lookAt(cen); fotoCam.updateProjectionMatrix();
+    var cor = renderer.getClearColor(new THREE.Color()), alfa = renderer.getClearAlpha(); renderer.setRenderTarget(fotoRT); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(fotoCena, fotoCam);
+    var px = new Uint8Array(256 * 160 * 4); renderer.readRenderTargetPixels(fotoRT, 0, 0, 256, 160, px); renderer.setRenderTarget(null); renderer.setClearColor(cor, alfa); fotoCena.remove(obj);
+    var c = document.createElement('canvas'); c.width = 256; c.height = 160; var g = c.getContext('2d'), img = g.createImageData(256, 160);
+    for (var y = 0; y < 160; y++) img.data.set(px.subarray((159 - y) * 1024, (160 - y) * 1024), y * 1024);
+    g.putImageData(img, 0, 0); return c.toDataURL();
+  }
+  function pedirFoto(k) { if (fotos[k] || filaFotos.indexOf(k) >= 0) return; filaFotos.push(k); if (filaFotos.length === 1) setTimeout(processarFotos, 30); }
+  function processarFotos() {
+    var k = filaFotos[0]; if (!k) return;
+    function pronta(url) { fotos[k] = url; filaFotos.shift(); var img = document.querySelector('.card[data-k="' + k + '"] img'); if (img) img.src = url; if (k === minhaArma && $('cdArmaImg')) $('cdArmaImg').src = url; if (filaFotos.length) setTimeout(processarFotos, 40); }
+    try {
+      if (G.ITENS[k] || G.KITS[k]) pronta(fotoIcone(k));
+      else if (G.COLETES[k]) AR.modeloColete(k, function (m) { pronta(fotografar(m, true)); });
+      else if (G.SKINS[k]) AR.carregarSkin(k, function () { var sd = AR.soldado(null, 0, k); AR.animarSoldado(sd, 0, false, 0, 0.016); sd.updateMatrixWorld(true); pronta(fotografar(sd, true)); });
+      else { var m = AR.modelo(k); m.rotation.y = 0; pronta(fotografar(m, false)); }
+    } catch (e) { pronta(fotoIcone('xp2')); }
+  }
+  function listaLoja() {
+    return (lojaAba === 'novo' ? NOVOS.slice() : G.LOJA).filter(function (k) {
+      if (lojaAba === 'novo' ? NOVOS.indexOf(k) < 0 : categoria(k) !== lojaAba) return false; var a = G.item(k);
+      if (lojaAba === 'arma' && lojaSub !== 'tudo' && a.tipo !== lojaSub) return false;
+      return !lojaBusca || a.nome.toLowerCase().indexOf(lojaBusca) >= 0;
+    });
+  }
   function desenharLoja() {
-    var moedas = perfil ? perfil.moedas || 0 : 0, cat = '';
-    lojaAba = categoria(lojaSel);
-    $('lojaLista').innerHTML = '<div class="loja-abas">' + Object.keys(ABAS).map(function (k) { return '<button data-aba="' + k + '"' + (k === lojaAba ? ' class="on"' : '') + '>' + ABAS[k] + '</button>'; }).join('') + '</div>' +
-      G.LOJA.filter(function (k) { return categoria(k) === lojaAba; }).map(function (k) {
-      var a = G.item(k), tem = temItem(k);
-      return '<button class="item r-' + rarClasse(a.raridade) + (k === lojaSel ? ' on' : '') + '" data-k="' + k + '"><span class="i-rar">' + a.raridade + '</span><b>' + a.nome + '</b><small>' + (G.COLETES[k] ? '-' + Math.round(a.protecao * 100) + '% DANO NO CORPO' : a.tipo.toUpperCase()) + '</small>' +
-        '<span class="i-preco">' + (tem ? (usando(k) ? (G.COLETES[k] ? '✔ VESTIDO' : '✔ EQUIPADA') : 'ADQUIRIDO') : '<i class="moeda"></i>' + a.preco.toLocaleString('pt-BR')) + '</span></button>';
-    }).join('');
-    [].forEach.call($('lojaLista').querySelectorAll('.loja-abas button'), function (b) { b.onclick = function () { if (b.dataset.aba === lojaAba) return; lojaSel = G.LOJA.filter(function (k) { return categoria(k) === b.dataset.aba; })[0]; S.clicar(); desenharLoja(); mostrarArmaLoja(); }; });
-    [].forEach.call($('lojaLista').querySelectorAll('.item'), function (b) { b.onclick = function () { lojaSel = b.dataset.k; S.clicar(); desenharLoja(); mostrarArmaLoja(); }; });
-    var a = G.item(lojaSel), tem = temItem(lojaSel), col = !!G.COLETES[lojaSel], skn = !!G.SKINS[lojaSel];
-    $('vNome').textContent = a.nome; $('vTipo').textContent = skn ? 'PERSONAGEM · SÓ VISUAL (NÃO MUDA DANO)' : col ? 'COLETE · REDUZ ' + Math.round(a.protecao * 100) + '% DO DANO NO CORPO' : a.tipo.toUpperCase() + ' · PENTE ' + a.pente + ' · RESERVA ' + a.reserva;
-    $('vRar').textContent = a.raridade; $('vRar').className = 'raridade ' + rarClasse(a.raridade); $('vDesc').textContent = a.desc || '';
-    $('vStats').innerHTML = skn ? '<p class="v-obs">Substitui a Tarantula/Judy só para você. Os outros jogadores veem você com ela; o time aparece na cor do nome.</p>' : col ? barra('PROTEÇÃO', a.protecao / 0.35) + barra('COBERTURA', lojaSel === 'colete3' ? 1 : lojaSel === 'colete2' ? 0.75 : 0.55) + '<p class="v-obs">Headshot continua dano cheio.</p>'
-      : barra('DANO', a.dano / 125) + barra('PRECISÃO', 1 - (a.dispMira != null ? a.dispMira * 200 : a.disp * 20)) + barra('CADÊNCIA', 0.1 / a.cadencia) + barra('ALCANCE', a.alcance / 280) + barra('MOBILIDADE', a.tipo === 'sniper' ? 0.45 : 0.85);
+    var moedas = perfil ? perfil.moedas || 0 : 0; $('jMoedas').textContent = moedas.toLocaleString('pt-BR');
+    $('lAbas').innerHTML = Object.keys(ABAS).map(function (k) { return '<button data-aba="' + k + '"' + (k === lojaAba ? ' class="on"' : '') + '>' + ABAS[k] + '</button>'; }).join('');
+    $('lSub').innerHTML = lojaAba === 'arma' ? Object.keys(SUBS).map(function (k) { return '<button data-sub="' + k + '"' + (k === lojaSub ? ' class="on"' : '') + '>' + SUBS[k] + '</button>'; }).join('') : '';
+    var lista = listaLoja();
+    $('lojaLista').innerHTML = lista.length ? lista.map(function (k) {
+      var a = G.item(k), tem = temItem(k), usa = usando(k), novo = !tem && ['vx45_cupido', 'vx45_neon', 'b3_punk', 'l7_neon', 't12_brasa', 'kit_neon', 'kit_punk', 'kit_cupido'].indexOf(k) >= 0;
+      var fita = usa ? '<span class="fita uso">EM USO</span>' : tem ? '<span class="fita tem">ADQUIRIDO</span>' : novo ? '<span class="fita">NOVO</span>' : '';
+      var bt = G.ITENS[k] ? (diasRestam(k) ? diasRestam(k) + ' dias' : 'Comprar') : usa ? 'Em uso' : tem ? (G.KITS[k] ? 'Tem tudo' : 'Usar') : 'Comprar';
+      pedirFoto(k);
+      return '<button class="card r-' + rarClasse(a.raridade) + (k === lojaSel ? ' on' : '') + '" data-k="' + k + '"><span class="c-nome">' + esc(a.nome) + '</span><img alt="" src="' + (fotos[k] || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7') + '">' + fita +
+        '<span class="c-pe"><span class="c-preco">' + (tem && !G.ITENS[k] ? '' : '<i class="moeda"></i>' + (a.preco ? a.preco.toLocaleString('pt-BR') : 'GRÁTIS')) + '</span><span class="c-bt">' + bt + '</span></span></button>';
+    }).join('') : '<p class="vazio">Nada encontrado.</p>';
+    [].forEach.call($('lAbas').children, function (b) { b.onclick = function () { lojaAba = b.dataset.aba; lojaSub = 'tudo'; var l = listaLoja(); if (l.length) lojaSel = l[0]; S.clicar(); desenharLoja(); mostrarArmaLoja(); }; });
+    [].forEach.call($('lSub').children, function (b) { b.onclick = function () { lojaSub = b.dataset.sub; S.clicar(); desenharLoja(); }; });
+    [].forEach.call($('lojaLista').querySelectorAll('.card'), function (b) { b.onclick = function () { lojaSel = b.dataset.k; S.clicar(); desenharLoja(); mostrarArmaLoja(); }; });
+    detalheLoja();
+  }
+  function detalheLoja() {
+    var k = lojaSel, a = G.item(k); if (!a) return; var tem = temItem(k), moedas = perfil ? perfil.moedas || 0 : 0;
+    $('vNome').textContent = a.nome; $('vRar').textContent = a.raridade || 'PADRÃO'; $('vRar').className = 'raridade ' + rarClasse(a.raridade); $('vDesc').textContent = a.desc || '';
+    $('vTipo').textContent = G.KITS[k] ? 'KIT · ' + a.itens.length + ' ITENS' : G.ITENS[k] ? 'ITEM · DURA ' + a.dias + ' DIAS' : G.SKINS[k] ? 'PERSONAGEM · SÓ VISUAL' : G.COLETES[k] ? 'COLETE' : (a.tipo || '').toUpperCase() + ' · PENTE ' + a.pente + ' · RESERVA ' + a.reserva;
+    var arma = A[k] && A[k].dano ? A[k] : null;
+    $('vStats').innerHTML = arma ? barra('Dano', arma.dano / 125, arma.dano) + barra('Espalhar', 1 - Math.min(1, arma.disp * 9), Math.round((1 - Math.min(1, arma.disp * 9)) * 100)) + barra('Disparo', Math.min(1, 0.09 / arma.cadencia), Math.round(60 / arma.cadencia)) + barra('Alcance', arma.alcance / 280, arma.alcance) + barra('Velocidade', arma.tipo === 'sniper' ? 0.62 : arma.tipo === 'smg' ? 0.95 : 0.82)
+      : G.COLETES[k] ? barra('Proteção', a.protecao / 0.35, '-' + Math.round(a.protecao * 100) + '%') + barra('Vida', 1, 100)
+      : G.ITENS[k] ? barra('Duração', a.dias / 7, a.dias + 'd') + '<p class="v-obs">' + (diasRestam(k) ? 'Ativo: faltam ' + diasRestam(k) + ' dias.' : 'Não ativo.') + '</p>'
+      : G.KITS[k] ? a.itens.map(function (x) { return '<p class="v-obs">' + (temItem(x) && !G.ITENS[x] ? '✔ ' : '• ') + esc(G.item(x).nome) + '</p>'; }).join('')
+      : '<p class="v-obs">Muda só a aparência. Não muda dano.</p>';
     $('vPreco').textContent = a.preco ? a.preco.toLocaleString('pt-BR') : 'GRÁTIS';
     var bt = $('vBotao'); bt.disabled = false; $('vFalta').textContent = '';
-    if (tem && skn) { var usa = usando(lojaSel); bt.textContent = usa ? 'USAR PADRÃO DO TIME' : 'USAR PERSONAGEM'; bt.onclick = function () { mandar({ t: 'skin', id: usa ? null : lojaSel }); S.troca(); }; }
-    else if (tem && col) { var veste = usando(lojaSel); bt.textContent = veste ? 'TIRAR COLETE' : 'VESTIR'; bt.onclick = function () { mandar({ t: 'colete', id: veste ? null : lojaSel }); S.troca(); }; }
-    else if (tem) { bt.textContent = usando(lojaSel) ? '✔ EQUIPADA' : 'EQUIPAR'; bt.disabled = usando(lojaSel); bt.onclick = function () { equipar(lojaSel); S.troca(); desenharLoja(); }; }
-    else { bt.textContent = 'COMPRAR'; if (moedas < a.preco) { bt.disabled = true; $('vFalta').textContent = 'Faltam ' + (a.preco - moedas).toLocaleString('pt-BR') + ' moedas · ganhe jogando partidas'; }
-      bt.onclick = function () { if (confirm('Comprar ' + a.nome + ' por ' + a.preco.toLocaleString('pt-BR') + ' moedas?')) mandar({ t: 'comprar', arma: lojaSel }); }; }
+    function comprar() { if (moedas < a.preco) { bt.disabled = true; $('vFalta').textContent = 'Faltam ' + (a.preco - moedas).toLocaleString('pt-BR'); } bt.onclick = function () { if (confirm('Comprar ' + a.nome + ' por ' + a.preco.toLocaleString('pt-BR') + ' moedas?')) mandar({ t: 'comprar', arma: k }); }; }
+    if (G.ITENS[k]) { bt.textContent = diasRestam(k) ? 'RENOVAR +' + a.dias + 'D' : 'COMPRAR'; comprar(); }
+    else if (G.KITS[k]) { if (tem) { bt.textContent = 'ADQUIRIDO'; bt.disabled = true; } else { bt.textContent = 'COMPRAR KIT'; comprar(); } }
+    else if (tem && G.SKINS[k]) { var usa = usando(k); bt.textContent = usa ? 'TIRAR' : 'USAR'; bt.onclick = function () { mandar({ t: 'skin', id: usa ? null : k }); S.troca(); }; }
+    else if (tem && G.COLETES[k]) { var veste = usando(k); bt.textContent = veste ? 'TIRAR' : 'VESTIR'; bt.onclick = function () { mandar({ t: 'colete', id: veste ? null : k }); S.troca(); }; }
+    else if (tem) { bt.textContent = usando(k) ? 'EM USO' : 'USAR'; bt.disabled = usando(k); bt.onclick = function () { equipar(k); S.troca(); desenharLoja(); mostrarArmaLoja(); }; }
+    else { bt.textContent = 'COMPRAR'; comprar(); }
   }
+  // o personagem da esquerda mostra o item escolhido (arma na mão, colete ou personagem)
   function mostrarArmaLoja() {
-    if (!loja3d) {
-      var cv3 = $('lojaCanvas'), r = new THREE.WebGLRenderer({ canvas: cv3, antialias: true, alpha: true }); r.outputEncoding = THREE.sRGBEncoding; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.15;
-      var sc = new THREE.Scene(), cm = new THREE.PerspectiveCamera(30, 1, 0.01, 50);
-      sc.add(new THREE.HemisphereLight(0xffffff, 0x302018, 1.0)); var l1 = new THREE.DirectionalLight(0xffffff, 1.3); l1.position.set(2, 3, 2); sc.add(l1); var l2 = new THREE.DirectionalLight(0xffb070, 0.8); l2.position.set(-3, 1, -2); sc.add(l2);
-      var base = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.48, 0.04, 48), new THREE.MeshStandardMaterial({ color: 0x1a222c, metalness: 0.6, roughness: 0.35 })); base.position.y = -0.32; sc.add(base);
-      var anel = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.008, 8, 64), new THREE.MeshBasicMaterial({ color: 0xf2b53a })); anel.rotation.x = Math.PI / 2; anel.position.y = -0.3; sc.add(anel);
-      var piv = new THREE.Group(); sc.add(piv);
-      loja3d = { r: r, sc: sc, cm: cm, piv: piv, giro: 0.6, arr: null, anel: anel };
-      cv3.addEventListener('pointerdown', function (e) { loja3d.arr = e.clientX; try { cv3.setPointerCapture(e.pointerId); } catch (x) {} });
-      cv3.addEventListener('pointermove', function (e) { if (loja3d.arr != null) { loja3d.piv.rotation.y += (e.clientX - loja3d.arr) * 0.012; loja3d.arr = e.clientX; } });
-      cv3.addEventListener('pointerup', function () { loja3d.arr = null; }); cv3.addEventListener('pointercancel', function () { loja3d.arr = null; });
-    }
-    var L = loja3d, sel = lojaSel; while (L.piv.children.length) L.piv.remove(L.piv.children[0]);
-    var cores = { lend: 0xff5a2a, epica: 0xb05cff, rara: 0x4aa8ff, pad: 0xf2b53a }; L.anel.material.color.set(cores[rarClasse(G.item(sel).raridade)]);
-    function por(m, girar, alvo, dy) {
-      if (sel !== lojaSel) return;
-      var caixa = new THREE.Box3().setFromObject(m), cen = caixa.getCenter(new THREE.Vector3()), tam = caixa.getSize(new THREE.Vector3());
-      var k = alvo / Math.max(tam.x, tam.y, tam.z); m.scale.multiplyScalar(k); m.position.sub(cen.multiplyScalar(k)); m.position.y += dy == null ? 0.02 : dy;
-      var g = new THREE.Group(); g.add(m); g.rotation.y = girar; L.piv.add(g);
-    }
-    if (G.COLETES[sel]) AR.modeloColete(sel, function (m) { por(m, Math.PI, 0.62); });
-    else if (G.SKINS[sel]) AR.carregarSkin(sel, function () { var s = AR.soldado(null, 0, sel); AR.armaSoldado(s, minhaArma); AR.animarSoldado(s, 0, false, 0, 0.016); AR.animarSoldado(s, 0, false, 0, 0.016); s.updateMatrixWorld(true); por(s, Math.PI, 0.7, 0.05); });
-    else por(AR.modelo(sel), Math.PI / 2, 1.05);
+    if ($('loja').hidden) return; var k = lojaSel;
+    montarPrevia({ area: 'lojaPrevia', arma: A[k] && A[k].slot === 1 ? k : minhaArma, skin: G.SKINS[k] ? k : undefined, colete: G.COLETES[k] ? k : undefined });
   }
-  function quadroLoja() {
-    if ($('loja').hidden || !loja3d) return; requestAnimationFrame(quadroLoja);
-    var L = loja3d, cv3 = L.r.domElement, w = cv3.clientWidth, h = cv3.clientHeight;
-    if (cv3.width !== Math.floor(w * Math.min(2, devicePixelRatio)) || cv3.height !== Math.floor(h * Math.min(2, devicePixelRatio))) { L.r.setPixelRatio(Math.min(2, devicePixelRatio)); L.r.setSize(w, h, false); L.cm.aspect = w / Math.max(1, h); L.cm.updateProjectionMatrix(); }
-    L.cm.position.set(0, 0.32, 1.75); L.cm.lookAt(0, -0.04, 0);
-    if (L.arr == null) L.piv.rotation.y += 0.008;
-    L.r.render(L.sc, L.cm);
+  function abrirLoja() {
+    S.iniciar(); telaAntesLoja = ['tLobby', 'tSala'].filter(function (t) { return !$(t).hidden; })[0] || null; if (telaAntesLoja) $(telaAntesLoja).hidden = true;
+    $('loja').hidden = false; if (lojaAba !== 'novo' && categoria(lojaSel) !== lojaAba) lojaAba = categoria(lojaSel); desenharLoja(); mostrarArmaLoja();
   }
-  function abrirLoja() { S.iniciar(); $('loja').hidden = false; desenharLoja(); mostrarArmaLoja(); requestAnimationFrame(quadroLoja); }
-  $('btLoja').onclick = abrirLoja; $('btFecharLoja').onclick = function () { $('loja').hidden = true; };
+  function fecharLoja() { $('loja').hidden = true; if (telaAntesLoja) $(telaAntesLoja).hidden = false; telaAntesLoja = null; if (estado === 'sala') { pv.chave = ''; montarPrevia(); } else tirarPrevia(); }
+  $('lBusca').addEventListener('input', function () { lojaBusca = this.value.trim().toLowerCase(); desenharLoja(); }); $('lLimpa').onclick = function () { $('lBusca').value = ''; lojaBusca = ''; desenharLoja(); };
+  $('cdSalas').onclick = function () { S.clicar(); $('painelSalas').hidden = false; mandar({ t: 'salas' }); };
+  $('btFecharSalas').onclick = function () { $('painelSalas').hidden = true; };
+  $('cdPerso').onclick = function () { lojaAba = 'personagem'; lojaSub = 'tudo'; var l = listaLoja(); if (l.length) lojaSel = (perfil && perfil.skin && l.indexOf(perfil.skin) >= 0) ? perfil.skin : l[0]; abrirLoja(); };
+  $('cdCriar').onclick = function () { $('btCriar').click(); };
+  $('cdArsenal').onclick = function () { lojaAba = 'arma'; lojaSub = 'tudo'; lojaSel = minhaArma; abrirLoja(); };
+  function cartoesLobby() {
+    var a = A[minhaArma]; $('cdArmaNome').textContent = a ? a.nome : ''; $('lHeroiArma').textContent = a ? a.nome.toUpperCase() : '';
+    if (perfil) $('lHeroiNick').textContent = perfil.nome || '';
+    if (fotos[minhaArma]) $('cdArmaImg').src = fotos[minhaArma]; else pedirFoto(minhaArma);
+    var n = salasLista ? salasLista.length : 0; $('cdSalasN').textContent = n ? '(' + n + ')' : '';
+  }
+  setInterval(function () { if (!$('tLobby').hidden) cartoesLobby(); }, 700);
+  $('btLoja').onclick = function () { lojaAba = 'novo'; abrirLoja(); }; $('btFecharLoja').onclick = fecharLoja;
 
   /* ---------- ranking, amigos e clã ---------- */
   var amigosInfo = { amigos: [], pedidos: [] };
@@ -434,6 +511,40 @@
     if (!$('fim').hidden) setTimeout(mostra, 2500); else mostra();
   }
 
+
+  /* ---------- sala: seu personagem de pé dentro do mapa ---------- */
+  var pv = { modelo: null, chave: '', t: 0 };
+  function minhaInfoSala() { return salaInfo && salaInfo.jogs.find(function (j) { return j.id === meuId; }); }
+  function montarPrevia(ov) {
+    ov = ov || pv.ov || {}; pv.ov = ov; if (!mapaAtual) return;
+    var s = salaInfo, e3 = s ? minhaInfoSala() : null, time = s && s.modo === 'todos' ? null : (e3 ? e3.time : 'r');
+    var arma = ov.arma || minhaArma, skin = ov.skin !== undefined ? ov.skin : (perfil && perfil.skin), col = ov.colete !== undefined ? ov.colete : (perfil && perfil.colete);
+    pv.area = ov.area || 'sPrevia';
+    if (skin && AR.temSkin && !AR.temSkin(skin)) { AR.carregarSkin(skin, function () { pv.chave = ''; montarPrevia(); }); }
+    var chave = [time, arma, skin, col, mapaAtual.id, pv.area].join('|');
+    if (pv.modelo && pv.chave === chave && pv.modelo.parent === cena) return;
+    if (pv.modelo && pv.modelo.parent) pv.modelo.parent.remove(pv.modelo);
+    pv.chave = chave; pv.modelo = AR.soldado(time, meuId, skin); AR.armaSoldado(pv.modelo, arma); if (AR.coleteSoldado) AR.coleteSoldado(pv.modelo, col);
+    var n = (mapaAtual.nasc[time || 'r'] || mapaAtual.nasc.r)[0], dx = -n[0], dz = -n[1], d = Math.hypot(dx, dz) || 1; dx /= d; dz /= d;
+    var px = n[0] + dx * 4, pz = n[1] + dz * 4;
+    pv.modelo.position.set(px, G.chaoEm ? G.chaoEm(mapaAtual, px, pz) : 0, pz); pv.modelo.rotation.y = Math.atan2(dx, dz); pv.base = pv.modelo.rotation.y;
+    pv.cam = { x: n[0] + dx * 0.9, y: (pv.modelo.position.y || 0) + 1.25, z: n[1] + dz * 0.9 }; pv.olho = { x: px, y: pv.modelo.position.y + 1.0, z: pz };
+    cena.add(pv.modelo);
+    if (pv.area === 'sPrevia') { $('pvArma').textContent = A[arma] ? A[arma].nome : arma; $('pvTime').textContent = time === 'b' ? 'TIME AZUL' : time === 'r' ? 'TIME VERMELHO' : 'TODOS CONTRA TODOS'; $('pvTime').style.color = time === 'b' ? '#79b8ff' : time === 'r' ? '#ff7b72' : '#9fb0c0'; }
+  }
+  function tirarPrevia() { if (pv.modelo && pv.modelo.parent) pv.modelo.parent.remove(pv.modelo); pv.chave = ''; cam.clearViewOffset(); }
+  function trocarArmaPrevia(passo) { var l = minhasArmas(), i = l.indexOf(minhaArma); equipar(l[(i + passo + l.length) % l.length]); S.troca(); setTimeout(function () { montarPrevia({}); }, 0); }
+  $('pvAnt').onclick = function () { trocarArmaPrevia(-1); }; $('pvProx').onclick = function () { trocarArmaPrevia(1); };
+  // câmera da sala: personagem centralizado na área da esquerda
+  function cameraSala(dt) {
+    if (!pv.modelo || !pv.cam) return false;
+    var r = $(pv.area || 'sPrevia').getBoundingClientRect(), W = innerWidth, H = innerHeight; if (!r.width) return false;
+    pv.t += dt; pv.modelo.rotation.y = pv.base + Math.sin(pv.t * 0.5) * 0.45; AR.animarSoldado(pv.modelo, 0, false, 0, dt);
+    cam.fov = 38; cam.aspect = W / H; cam.position.set(pv.cam.x, pv.cam.y, pv.cam.z); cam.lookAt(pv.olho.x, pv.olho.y, pv.olho.z);
+    cam.setViewOffset(W, H, W / 2 - (r.left + r.width / 2), H / 2 - (r.top + r.height * 0.52), W, H); cam.updateProjectionMatrix();
+    return true;
+  }
+
   /* ---------- janelas ---------- */
   function janela(html, ini) { $('janela').innerHTML = html; $('janela').hidden = false; if (ini) ini(); }
   function fecharJanela() { $('janela').hidden = true; }
@@ -442,6 +553,7 @@
   var eu = { x: 0, y: 0, z: 0, vy: 0, noChao: true, agachado: false, yaw: 0, pitch: 0, vida: 100, vivo: true, arma: 'ar9', primaria: 'ar9', mun: {}, granadas: 1, mira: false, recarregandoAte: 0, ultTiro: 0, recuo: 0, disp: 0, sequencia: 0 };
   var jogs = {}, partida = null, partidaPendente = null, mao = null, armaMao = null, efeitos = [], marcas = [], granadas = {};
   function iniciarPartida(m) {
+    tirarPrevia();
     var cl = perfil && perfil.colete && G.COLETES[perfil.colete]; $('hColete').hidden = !cl; if (cl) $('hColete').textContent = '-' + Math.round(cl.protecao * 100) + '%';
     if (!AR.personagensProntos) { partidaPendente = m; aviso('CARREGANDO PERSONAGENS...'); return; }
     estado = 'jogo'; fecharJanela(); $('fim').hidden = true; mostrar('tJogo'); carregarMapa(m.mapa);
@@ -451,7 +563,7 @@
     m.jogs.forEach(function (j) { jogs[j.id] = novoJog(j); });
     eu.vivo = true; eu.vida = 100; eu.mun = m.mun || eu.mun; eu.granadas = 1; eu.primaria = minhaArma; eu.yaw = eu.time === 'r' ? -Math.PI / 2 : Math.PI / 2; eu.pitch = 0;
     if (!eu.mun[eu.primaria]) eu.primaria = Object.keys(eu.mun).filter(function (k) { return k !== 'p9'; })[0] || 'ar9';
-    if (m.modo === 'faca') eu.primaria = 'faca';
+    if (m.modo === 'faca') eu.primaria = 'faca'; if (m.modo === 'pistola') eu.primaria = 'p9';
     rodada = m.rodada || null; bombaMundo(null); montarLocais(m.mapa); $('hRodada').hidden = !rodada; $('banner').className = 'banner';
     trocarArma(eu.primaria, true); $('morto').hidden = true; $('feed').innerHTML = ''; $('estrelas').innerHTML = '';
     atualizarPlacar(); minimapaBase = null; S.iniciar();
@@ -482,18 +594,18 @@
   }
 
   /* ---------- arma na mão ---------- */
-  function permitida(id) { if (!partida) return true; if (partida.modo === 'faca') return id === 'faca'; if (partida.modo === 'sniper') return id === eu.primaria || id === 'faca'; return true; }
+  function permitida(id) { if (!partida) return true; if (partida.modo === 'faca') return id === 'faca'; if (partida.modo === 'sniper') return id === eu.primaria || id === 'faca'; if (partida.modo === 'pistola') return id === 'p9' || id === 'faca'; return true; }
   function trocarArma(id, sem) {
     if (!sem && !permitida(id)) return;
     if (!A[id]) return; if (eu.arma === id && armaMao && !sem) return;
     eu.arma = id; eu.mira = false; eu.recarregandoAte = 0; if (!sem) S.troca(); mandar({ t: 'trocar', arma: id });
     if (mao) camMao.remove(mao);
     mao = new THREE.Group(); armaMao = AR.modelo(id, true); mao.add(armaMao);
-    var br = AR.bracos(), pos = AR.maos[id] || AR.maos.ar9; mao.add(br);
+    var br = AR.bracos(), pos = AR.maos[id] || (A[id] && A[id].base && AR.maos[A[id].base]) || AR.maos.ar9; mao.add(br);
     br.userData.dir.position.set(pos[0][0], pos[0][1], pos[0][2]); br.userData.dir.rotation.set(pos[0][3], pos[0][4], 0);
     br.userData.esq.position.set(pos[1][0], pos[1][1], pos[1][2]); br.userData.esq.rotation.set(pos[1][3], pos[1][4], 0);
     mao.userData.esq = br.userData.esq; mao.userData.esq0 = br.userData.esq.position.clone(); mao.userData.esqR0 = br.userData.esq.rotation.clone();
-    mao.scale.setScalar(0.55); camMao.add(mao); cenaMao.add(camMao); mao.userData.troca = 0.35;
+    mao.scale.setScalar(0.55); camMao.add(mao); cenaMao.add(camMao); mao.userData.troca = 0.35 * (G.itemAtivo(perfil, 'troca15') ? 0.85 : 1);
     $('hArma').textContent = A[id].nome; atualizarMunicao();
   }
   function atualizarMunicao() {
@@ -504,7 +616,7 @@
     if ($('hGr')) $('hGr').textContent = eu.granadas || 0; document.querySelector('.municao').classList.toggle('vazia', !!(m && m.pente === 0));
     $('hVida').textContent = Math.max(0, Math.round(eu.vida)); $('hBarra').style.width = Math.max(0, eu.vida) + '%'; document.querySelector('.vida').classList.toggle('baixa', eu.vida < 35);
   }
-  function proximaArma() { var ordem = [eu.primaria, 'p9', 'faca'].concat(eu.granadas > 0 ? ['gr'] : []).filter(permitida), i = ordem.indexOf(eu.arma); trocarArma(ordem[(i + 1) % ordem.length]); }
+  function proximaArma() { var ordem = [eu.primaria, 'p9', 'faca'].concat(eu.granadas > 0 ? ['gr'] : []).filter(permitida).filter(function (v, i, l) { return l.indexOf(v) === i; }), i = ordem.indexOf(eu.arma); trocarArma(ordem[(i + 1) % ordem.length]); }
   function recarregar() {
     var a = A[eu.arma], m = eu.mun[eu.arma]; if (!m || !a.pente || m.pente >= a.pente || m.reserva <= 0 || performance.now() < eu.recarregandoAte) return;
     eu.recarregandoAte = performance.now() + a.recarga * 1000; eu.mira = false; S.recarga(eu.arma, a.recarga); mandar({ t: 'recarregar' });
@@ -527,7 +639,7 @@
     eu.ultTiro = t; if (m) m.pente--;
     // dispersão: andando, pulando, mirando
     var anda = Math.hypot(velX, velZ) > 0.5 || !eu.noChao, disp = (eu.mira && a.dispMira != null ? a.dispMira : a.disp * (eu.mira ? 0.45 : 1)) + (anda ? a.dispAnda : 0) + eu.disp + (eu.agachado ? -a.disp * 0.3 : 0);
-    disp = Math.max(0, disp);
+    disp = Math.max(0, disp) * (G.itemAtivo(perfil, 'hollow') ? 0.9 : 1);
     function dir() { var r = Math.random() * disp, ang = Math.random() * Math.PI * 2; return G.dirDe(eu.yaw + Math.cos(ang) * r, eu.pitch + Math.sin(ang) * r); }
     if (a.tipo === 'faca') { mandar({ t: 'tiro', d: G.dirDe(eu.yaw, eu.pitch), yaw: eu.yaw }); S.faca(); mao.userData.facada = 0.3; return; }
     var d = dir(), chumbos = a.chumbos ? Array.from({ length: a.chumbos }, dir) : null;
@@ -541,7 +653,7 @@
     if (a.luneta && eu.mira) { eu.mira = false; setTimeout(function () { if (atirando === false) {} }, 0); }
   }
   // clarão na boca da arma
-  var luzClarao = new THREE.PointLight(0xffc070, 0, 6); cena.add(luzClarao);
+  var luzClarao = { position: new THREE.Vector3(), intensity: 0, distance: 6 }; // sem luz de verdade: o clarão é só o brilho (mais leve)
   var spriteClarao = new THREE.Sprite(new THREE.SpriteMaterial({ map: (function () { var c = document.createElement('canvas'); c.width = c.height = 64; var g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 2, 32, 32, 30); gr.addColorStop(0, 'rgba(255,255,220,1)'); gr.addColorStop(0.3, 'rgba(255,190,80,.9)'); gr.addColorStop(1, 'rgba(255,120,0,0)'); g.fillStyle = gr; g.beginPath(); for (var i = 0; i < 10; i++) { var a = i / 10 * Math.PI * 2, r = i % 2 ? 12 : 31; g.lineTo(32 + Math.cos(a) * r, 32 + Math.sin(a) * r); } g.fill(); return new THREE.CanvasTexture(c); })(), blending: THREE.AdditiveBlending, depthTest: false, transparent: true }));
   spriteClarao.visible = false; cenaMao.add(spriteClarao);
   var claraoT = 0;
@@ -639,7 +751,7 @@
   function limparDrops() { Object.keys(drops).forEach(tirarDrop); }
   function dropPerto() {
     if (!eu.vivo || !partida || partida.modo === 'faca') return null; var melhor = null, md = 2.2;
-    Object.keys(drops).forEach(function (k) { var d = drops[k].d; if (partida.modo === 'sniper' && A[d.arma].tipo !== 'sniper') return; var dist = Math.hypot(d.x - eu.x, d.z - eu.z); if (dist < md && Math.abs(d.y - eu.y) < 1.6) { md = dist; melhor = d; } });
+    Object.keys(drops).forEach(function (k) { var d = drops[k].d; if (partida.modo === 'sniper' && A[d.arma].tipo !== 'sniper') return; if (partida.modo === 'pistola' && A[d.arma].tipo !== 'pistola') return; var dist = Math.hypot(d.x - eu.x, d.z - eu.z); if (dist < md && Math.abs(d.y - eu.y) < 1.6) { md = dist; melhor = d; } });
     return melhor;
   }
   function pegarPerto() { var d = dropPerto(); if (d) mandar({ t: 'pegar', id: d.id }); }
@@ -809,15 +921,23 @@
 
   /* ---------- laço ---------- */
   var velX = 0, velZ = 0, ultT = performance.now(), envioT = 0, passoT = 0, mostrado = 0;
+  var _vBase = new THREE.Vector3(), _vEsq = new THREE.Vector3(), _vK1 = new THREE.Vector3(), _vK2 = new THREE.Vector3();
   function quadro(agora) {
     requestAnimationFrame(quadro);
     var dt = Math.min(0.05, (agora - ultT) / 1000); ultT = agora; var t = agora / 1000;
     if (estado !== 'jogo') {
+      if ((quadroN = (quadroN + 1) % 2)) return; // menu a 30 fps: o celular respira
+      var areaPv = !$('loja').hidden ? 'lojaPrevia' : (estado === 'sala' && !$('tSala').hidden) ? 'sPrevia' : !$('tLobby').hidden ? 'lPrevia' : !$('tNick').hidden ? 'nPrevia' : null;
+      if (areaPv === 'lPrevia' || areaPv === 'nPrevia') montarPrevia({ area: areaPv }); else if (areaPv === 'sPrevia' && (pv.area !== areaPv || !pv.modelo || pv.modelo.parent !== cena)) montarPrevia({ area: areaPv });
+      if (areaPv && cameraSala(dt * 2)) { renderer.clear(); renderer.render(cena, cam); return; }
+      if (cam.view && cam.view.enabled) cam.clearViewOffset();
       // fundo do menu: câmera passeando pelo mapa
       cam.fov = 70; cam.updateProjectionMatrix(); var L = mapaAtual.lim;
       cam.position.set(Math.sin(t * 0.06) * L[0] * 0.6, 3.2, Math.cos(t * 0.06) * L[1] * 0.5); cam.lookAt(0, 1.5, 0);
       renderer.clear(); renderer.render(cena, cam); return;
     }
+    resolucaoAuto(dt);
+    var cs0 = AR.sombraPersonagens ? NIVEIS[graf.nivel].cadaSombra : 0; if (cs0 && quadroN % cs0 === 0) renderer.shadowMap.needsUpdate = true;
     // movimento
     eu.agachado = !!(teclas.ControlLeft || teclas.KeyC || eu.agachadoT);
     var fx = 0, fz = 0; if (teclas.KeyW) fz += 1; if (teclas.KeyS) fz -= 1; if (teclas.KeyA) fx -= 1; if (teclas.KeyD) fx += 1; fx += joy.x; fz -= joy.y;
@@ -842,7 +962,7 @@
     if (!eu.vivo) {
       var kc = killcam && Date.now() < killcam.ate ? jogs[killcam.id] : null;
       if (kc && kc.m) { // câmera da morte: vira e aproxima de quem te matou
-        var alvoK = new THREE.Vector3(kc.x, kc.y + 1.4, kc.z), olhoK = new THREE.Vector3(eu.x, eu.olhoY - 0.6, eu.z);
+        var alvoK = _vK1.set(kc.x, kc.y + 1.4, kc.z), olhoK = _vK2.set(eu.x, eu.olhoY - 0.6, eu.z);
         cam.position.copy(olhoK); var q0 = cam.quaternion.clone(); cam.lookAt(alvoK); var q1 = cam.quaternion.clone(); cam.quaternion.copy(q0).slerp(q1, Math.min(1, (Date.now() - killcam.ini) / 600));
         fovAlvo = Math.max(18, Math.min(55, 1400 / Math.max(8, alvoK.distanceTo(olhoK)) + 10)); marcaKill.visible = true; marcaKill.position.set(kc.x, kc.y + 2.35, kc.z);
       } else {
@@ -854,22 +974,22 @@
           $('espiando').hidden = false; $('espiando').innerHTML = '👁 ASSISTINDO <b>' + esc(nomeDe(oe.id)) + '</b><small>toque para trocar</small>';
         } else $('espiando').hidden = true;
       }
-    } else { marcaKill.visible = false; $('espiando').hidden = true; }
+    } else { marcaKill.visible = false; hudOculto('espiando', true); }
     cam.fov += (fovAlvo - cam.fov) * Math.min(1, dt * (eu.vivo ? 14 : 4)); cam.updateProjectionMatrix();
-    var luneta = eu.mira && a.luneta && cam.fov < 30; $('luneta').hidden = !luneta; var holo = eu.vivo && eu.mira && a.holo && cam.fov < 50; $('holo').hidden = !holo; if (holo) luneta = true; var m15 = eu.vivo && eu.mira && a.mira15 && cam.fov < 60; $('mira15').hidden = !m15; if (m15) luneta = true; $('mira').style.display = !eu.vivo || luneta ? 'none' : ''; $('mira').classList.toggle('ads', !!eu.mira);
-    var abertura = 8 + (Math.hypot(velX, velZ) > 0.5 ? a.dispAnda * 300 : 0) + eu.disp * 400 + (eu.noChao ? 0 : 14); $('mira').style.setProperty('--a', Math.min(40, abertura) + 'px');
+    var luneta = eu.mira && a.luneta && cam.fov < 30; hudOculto('luneta', !luneta); var holo = eu.vivo && eu.mira && a.holo && cam.fov < 50; hudOculto('holo', !holo); if (holo) luneta = true; var m15 = eu.vivo && eu.mira && a.mira15 && cam.fov < 60; hudOculto('mira15', !m15); if (m15) luneta = true; $('mira').style.display = !eu.vivo || luneta ? 'none' : ''; $('mira').classList.toggle('ads', !!eu.mira);
+    var abertura = 8 + (Math.hypot(velX, velZ) > 0.5 ? a.dispAnda * 300 : 0) + eu.disp * 400 + (eu.noChao ? 0 : 14); var ab = Math.round(Math.min(40, abertura)); if (cacheHud.ab !== ab) { cacheHud.ab = ab; $('mira').style.setProperty('--a', ab + 'px'); }
     S.ouvinte(eu.x, olhoY, eu.z, -sx, -cx);
     // arma na mão: balanço, mira, recuo, recarga, troca
     if (mao) {
       var u = mao.userData; u.chute = Math.max(0, (u.chute || 0) - dt * 9); u.troca = Math.max(0, (u.troca || 0) - dt); u.facada = Math.max(0, (u.facada || 0) - dt);
       var bob = andando ? Math.sin(t * 11) * 0.012 : Math.sin(t * 1.6) * 0.003, bobX = andando ? Math.cos(t * 5.5) * 0.012 : 0;
-      var mirando = eu.mira && !luneta, base = mirando ? new THREE.Vector3(0, -(armaMao.userData.mira.y) * 0.55 + (armaMao.userData.longe ? 0.008 : -0.014), armaMao.userData.longe ? -0.24 : -0.3) : new THREE.Vector3(0.14, -0.15, -0.3);
+      var mirando = eu.mira && !luneta, base = mirando ? _vBase.set(0, -(armaMao.userData.mira.y) * 0.55 + (armaMao.userData.longe ? 0.008 : -0.014), armaMao.userData.longe ? -0.24 : -0.3) : _vBase.set(0.14, -0.15, -0.3);
       var recarga = performance.now() < eu.recarregandoAte ? Math.sin(Math.min(1, (eu.recarregandoAte - performance.now()) / (a.recarga * 1000)) * Math.PI) : 0;
       u.pos = u.pos || base.clone(); u.pos.lerp(base, Math.min(1, dt * 16));
       mao.position.set(u.pos.x + bobX * (mirando ? 0.2 : 0.6), u.pos.y + bob * (mirando ? 0.2 : 0.6) - recarga * 0.07 - u.troca * 0.3, u.pos.z + u.chute * 0.035);
       mao.rotation.set(u.chute * 0.12 + recarga * 0.6 - u.facada * 1.2, recarga * 0.3 + u.facada * 0.8, recarga * 0.4);
       // recarga: a mão esquerda desce até o pente, puxa e coloca de volta
-      if (u.esq && armaMao.userData.pente) { var pp = armaMao.userData.pente, alvoE = new THREE.Vector3(pp.position.x - 0.02, pp.position.y - 0.06, pp.position.z + 0.06).add(armaMao.position);
+      if (u.esq && armaMao.userData.pente) { var pp = armaMao.userData.pente, alvoE = _vEsq.set(pp.position.x - 0.02, pp.position.y - 0.06, pp.position.z + 0.06).add(armaMao.position);
         u.esq.position.copy(u.esq0).lerp(alvoE, Math.min(1, recarga * 1.4)); u.esq.rotation.set(u.esqR0.x + recarga * 0.9, u.esqR0.y, u.esqR0.z); }
       mao.visible = eu.vivo && !luneta;
       if (armaMao.userData.pente) armaMao.userData.pente.position.y = (armaMao.userData.pente.userData.y0 == null ? (armaMao.userData.pente.userData.y0 = armaMao.userData.pente.position.y) : armaMao.userData.pente.userData.y0) - recarga * 0.15;
@@ -932,7 +1052,7 @@
     Object.keys(granadas).forEach(function (k) { var g = granadas[k]; g.v.y -= R.GRAV * dt; g.m.position.addScaledVector(g.v, dt); if (g.m.position.y < 0.06) { g.m.position.y = 0.06; g.v.y *= -0.4; g.v.x *= 0.7; g.v.z *= 0.7; } });
     // HUD
     var bombaP = rodada && rodada.bomba && rodada.bomba.estado === 'plantada';
-    var resta = Math.max(0, (bombaP ? rodada.bomba.explodeEm : rodada ? rodada.fim : partida.fim) - Date.now()), mm = Math.floor(resta / 60000), ss = Math.floor(resta / 1000) % 60; $('pTempo').textContent = (mm < 10 ? '0' : '') + mm + ':' + (ss < 10 ? '0' : '') + ss;
+    var resta = Math.max(0, (bombaP ? rodada.bomba.explodeEm : rodada ? rodada.fim : partida.fim) - Date.now()), mm = Math.floor(resta / 60000), ss = Math.floor(resta / 1000) % 60; hudTxt('pTempo', (mm < 10 ? '0' : '') + mm + ':' + (ss < 10 ? '0' : '') + ss);
     $('pTempo').classList.toggle('bomba', !!bombaP);
     if (rodada) { $('hRodada').textContent = 'RODADA ' + rodada.n + (partida.modo === 'bomba' && rodada.portador === meuId ? ' · 💣 VOCÊ ESTÁ COM A BOMBA' : ''); passoBomba(dt, agora); }
     passoDrops(agora);
@@ -945,6 +1065,7 @@
   function sol() { if (mundoAtual && mundoAtual.sol) { /* sombra cobre o mapa todo */ } }
   AR.carregarExtras(function (id) { if (estado === 'jogo' && eu.arma === id) trocarArma(id, true); if (!$('loja').hidden && id === lojaSel) mostrarArmaLoja(); });
   AR.carregarPersonagem(function () {
+    pv.chave = ''; if (estado === 'sala') montarPrevia();
     Object.keys(jogs).forEach(function (k) { trocarModelo(jogs[k]); });
     if (partidaPendente) { var pend = partidaPendente; partidaPendente = null; iniciarPartida(pend); }
   });

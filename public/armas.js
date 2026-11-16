@@ -165,7 +165,25 @@
       g.userData.boca = new THREE.Vector3(0, 0, 0); g.userData.mira = new THREE.Vector3(0, 0.05, 0);
     }
   };
-  AR.modelo = function (id) { var g = new THREE.Group(); (CONSTRUIR[id] || CONSTRUIR.ar9)(g); g.traverse(function (o) { if (o.isMesh) o.castShadow = true; }); return g; };
+
+  /* ---------- skins das coleções (pinturas feitas no código) ---------- */
+  var SKIN_TEX = {};
+  function texSkin(nome) {
+    if (SKIN_TEX[nome]) return SKIN_TEX[nome];
+    var c = document.createElement('canvas'); c.width = 256; c.height = 128; var g = c.getContext('2d'), w = 256, h = 128, i;
+    if (nome === 'cupido') { var gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#ff7eb6'); gr.addColorStop(1, '#ffffff'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+      for (i = 0; i < 22; i++) { var x = Math.random() * w, y = Math.random() * h, r = 5 + Math.random() * 9; g.fillStyle = i % 3 ? '#e1137b' : '#ff2d6f'; g.beginPath(); g.moveTo(x, y + r * 0.9); g.bezierCurveTo(x - r * 1.4, y, x - r * 0.6, y - r * 1.1, x, y - r * 0.3); g.bezierCurveTo(x + r * 0.6, y - r * 1.1, x + r * 1.4, y, x, y + r * 0.9); g.fill(); } }
+    else if (nome === 'neon') { g.fillStyle = '#0d0f14'; g.fillRect(0, 0, w, h); for (i = 0; i < 9; i++) { g.strokeStyle = i % 2 ? '#25f4ff' : '#ff2bd6'; g.lineWidth = 3; g.shadowColor = g.strokeStyle; g.shadowBlur = 8; g.beginPath(); g.moveTo(-20 + i * 34, h); g.lineTo(20 + i * 34, 0); g.stroke(); } g.shadowBlur = 0; }
+    else if (nome === 'punk') { g.fillStyle = '#111'; g.fillRect(0, 0, w, h); var cores = ['#ffe600', '#ff2bd6', '#25d0ff', '#ff5a1f', '#7cff3a', '#ffffff'];
+      for (i = 0; i < 40; i++) { g.fillStyle = cores[i % cores.length]; g.beginPath(); g.ellipse(Math.random() * w, Math.random() * h, 6 + Math.random() * 20, 4 + Math.random() * 12, Math.random() * 3, 0, 7); g.fill(); }
+      for (i = 0; i < 12; i++) { g.strokeStyle = '#000'; g.lineWidth = 2; g.beginPath(); g.moveTo(Math.random() * w, Math.random() * h); g.bezierCurveTo(Math.random() * w, Math.random() * h, Math.random() * w, Math.random() * h, Math.random() * w, Math.random() * h); g.stroke(); } }
+    else if (nome === 'brasa') { g.fillStyle = '#1a0d05'; g.fillRect(0, 0, w, h); for (i = 0; i < 14; i++) { var x0 = i * 20; g.fillStyle = i % 2 ? '#ff6a00' : '#ffb020'; g.beginPath(); g.moveTo(x0, h); g.quadraticCurveTo(x0 + 8, h * 0.45, x0 + 22, h * 0.05); g.quadraticCurveTo(x0 + 12, h * 0.5, x0 + 30, h); g.fill(); } }
+    else { g.fillStyle = '#888'; g.fillRect(0, 0, w, h); }
+    var t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    return (SKIN_TEX[nome] = new THREE.MeshStandardMaterial({ map: t, metalness: 0.35, roughness: 0.4, emissive: nome === 'neon' ? 0x222244 : 0x000000 }));
+  }
+  function pintar(g, skin) { var m = texSkin(skin); g.traverse(function (o) { if (o.isMesh && o.material && !(o.material.color && o.material.color.getHex() === 0x3fd0ff)) { var cor = o.material.color ? o.material.color.getHSL({}) : { l: 0.5 }; if (!o.material.map || o.material.map) o.material = m; } }); return g; }
+  AR.modelo = function (id) { var A0 = window.REGRAS && window.REGRAS.ARMAS[id], base = A0 && A0.base; var g = new THREE.Group(); (CONSTRUIR[base || id] || CONSTRUIR.ar9)(g); if (base && A0.skin) pintar(g, A0.skin); g.traverse(function (o) { if (o.isMesh) o.castShadow = true; }); return g; };
 
 
   /* ---------- modelos de fora (convertidos de .glb) ---------- */
@@ -304,7 +322,7 @@
     });
     raiz.updateMatrixWorld(true);
     var esq = new THREE.Skeleton(lista);
-    M.partes.forEach(function (pt) { var m = new THREE.SkinnedMesh(pt.geo, pt.mat); m.castShadow = true; m.frustumCulled = false; raiz.add(m); });
+    M.partes.forEach(function (pt) { if (!pt.geo.boundingSphere || !pt.geo.userData.esfera) { pt.geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.95, 0), 1.6); pt.geo.userData.esfera = true; } var m = new THREE.SkinnedMesh(pt.geo, pt.mat); m.castShadow = AR.sombraPersonagens !== false; m.frustumCulled = true; raiz.add(m); });
     raiz.updateMatrixWorld(true);
     raiz.children.forEach(function (m) { if (m.isSkinnedMesh) m.bind(esq); });
     Object.keys(M.mira).forEach(function (k) { ossos[k].quaternion.copy(M.mira[k]); });
