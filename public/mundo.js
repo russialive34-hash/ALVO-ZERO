@@ -255,8 +255,17 @@
         if (!ligado) return;
         rastros.forEach(function (r, i) { r.t += dt; if (r.t > 2.2 && Math.random() < dt * 20) { r.t = 0; fontes[i % 2].getWorldPosition(w); r.s.position.copy(w); r.s.visible = true; } if (r.t < 2.2) { var k2 = r.t / 2.2; r.s.scale.setScalar(0.8 + k2 * 2.5); r.s.material.opacity = 0.75 * (1 - k2); } else r.s.visible = false; });
       },
-      esconderEfeitos: function () { rastros.forEach(function (r) { r.s.visible = false; r.t = 99; }); }
+      esconderEfeitos: function () { rastros.forEach(function (r) { r.s.visible = false; r.t = 99; }); },
+      // troca o avião de código pelo dirigível (modelo 3D)
+      trocarModelo: function (modelo) { corpo.children.slice().forEach(function (ch) { if (ch !== luzE && ch !== luzD) ch.visible = false; }); helices.forEach(function (h) { h.visible = false; }); corpo.add(modelo); luzE.position.set(-4.2, -0.5, -21); luzD.position.set(4.2, -0.5, -21); }
     };
+  };
+  MU.carregarNave = function (cb) {
+    fetch('modelos/nave.json').then(function (r) { return r.json(); }).then(function (d) {
+      var g = new THREE.Group(), dentro = new THREE.Group(); g.add(dentro); dentro.scale.setScalar(0.018);
+      d.partes.forEach(function (p) { var geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(p.pos, 3)); if (p.nor) geo.setAttribute('normal', new THREE.Float32BufferAttribute(p.nor, 3)); if (p.uv) geo.setAttribute('uv', new THREE.Float32BufferAttribute(p.uv, 2)); geo.setIndex(p.idx); if (!p.nor) geo.computeVertexNormals(); var t = null; if (p.tex) { t = new THREE.TextureLoader().load('modelos/' + p.tex); t.flipY = false; } dentro.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: t }))); });
+      cb(g);
+    }).catch(function () { cb(null); });
   };
 
   /* ---------- vagão de espera (por dentro) ---------- */

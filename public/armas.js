@@ -102,5 +102,17 @@
       g.userData.boca = new THREE.Vector3(0, 0, 0); g.userData.mira = new THREE.Vector3(0, 0.05, 0);
     }
   };
-  AR.modelo = function (id) { var g = new THREE.Group(); (CONSTRUIR[id] || CONSTRUIR.ar9)(g); g.traverse(function (o) { if (o.isMesh) o.castShadow = true; }); return g; };
+  AR.modeloProc = function (id) { var g = new THREE.Group(); (CONSTRUIR[id] || CONSTRUIR.ar9)(g); g.traverse(function (o) { if (o.isMesh) o.castShadow = true; }); return g; };
+  // modelos 3D do pacote "Low Poly Weapons" (cano aponta para +z)
+  var LP = null, GEO = {}, ESC = { ar9: 0.21, b3: 0.2, vx45: 0.13, t12: 0.2, l7: 0.25, p9: 0.07, mun_leve: 0.16, mun_media: 0.13, mun_cartucho: 0.15, mun_pesada: 0.13 };
+  AR.carregar = function (cb) { fetch('modelos/armas_lp.json').then(function (r) { return r.json(); }).then(function (d) { LP = d; cb && cb(); }).catch(function () { cb && cb(); }); };
+  function lp(id) {
+    if (!LP || !LP[id]) return null;
+    if (!GEO[id]) GEO[id] = LP[id].map(function (p) { var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(p.pos, 3)); if (p.nor) g.setAttribute('normal', new THREE.Float32BufferAttribute(p.nor, 3)); g.setIndex(p.idx); if (!p.nor) g.computeVertexNormals(); return [g, new THREE.MeshLambertMaterial({ color: new THREE.Color(p.cor[0], p.cor[1], p.cor[2]) })]; });
+    var gr = new THREE.Group(), dentro = new THREE.Group(); gr.add(dentro); dentro.scale.setScalar(ESC[id] || 0.2);
+    GEO[id].forEach(function (gm) { var m = new THREE.Mesh(gm[0], gm[1]); m.castShadow = true; dentro.add(m); });
+    gr.userData.lp = true; gr.userData.boca = new THREE.Vector3(0, 0.05, 2.2 * (ESC[id] || 0.2) / 0.2 * 0.45 + 0.4); return gr;
+  }
+  AR.modelo = function (id) { return lp(id) || AR.modeloProc(id); };
+  AR.municao = function (tipo) { return lp('mun_' + tipo); };
 })();

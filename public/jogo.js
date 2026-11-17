@@ -59,7 +59,7 @@
     if (meuBoneco) g.remove(meuBoneco.raiz);
     meuBoneco = BO.criar(minhaRoupa); g.add(meuBoneco.raiz); meuBoneco.raiz.position.y = 0.22;
     lobby = { g: g, giro: 0, t: 0, trem: 0 };
-    $('lBoneco').textContent = BO.ROUPAS[minhaRoupa].nome;
+    $('lBoneco').textContent = 'Soldado'; $('btAnt').hidden = $('btProx').hidden = true;
   }
   function trocarIlha(seed) {
     if (ilha) { cena.remove(ilha.grupo); ilha.grupo.traverse(function (o) { if (o.geometry) o.geometry.dispose(); }); }
@@ -98,7 +98,7 @@
   $('btComo').onclick = function () {
     janela('<h3>COMO JOGAR</h3><ul><li>Espere no <b>avião</b>, ele decola e voa sobre a ilha. Aperte <b>PULAR</b> onde quiser cair.</li><li>Na queda você desce na <b>prancha voadora</b>. Empurre pra frente para <b>mergulhar</b> mais rápido. O <b>paraquedas</b> abre sozinho perto do chão.</li><li>Pegue <b>armas, munição, colete, capacete, kit médico, gelo e miras</b> nas casas.</li><li><b>❄ Parede de gelo:</b> levanta uma barreira na sua frente que segura os tiros.</li><li><b>◎ Mira:</b> com mira 2x, 4x ou 8x a visão aproxima.</li><li>Fique dentro da <b>zona segura</b> (fora dela você perde vida). Seja o último vivo para ser <b>CAMPEÃO</b>!</li><li>No PC: WASD, mouse, clique atira, botão direito mira, Espaço pula, C agacha, R recarrega, G gelo, H cura, F pega, 1/2 troca arma, M mapa.</li></ul><div class="bts"><button class="bt-pq" id="jFechar">ENTENDI</button></div>');
   };
-  $('btNovidades').onclick = function () { janela('<h3>NOVIDADES</h3><ul><li>✈ <b>Voo Coral</b>: o aviãozinho que leva todo mundo pra ilha.</li><li>🛹 <b>Prancha voadora</b> na queda livre.</li><li>❄ <b>Parede de gelo</b> para se proteger.</li><li>🎯 Miras 2x, 4x e 8x.</li><li>🏝 Ilha Coral com 7 cidades, lago e ilhotas.</li><li>🏭 Fábrica com chaminés e silos na Usina Velha.</li><li>🌾 Moinho de vento na Fazenda Sol.</li></ul><div class="bts"><button class="bt-pq" id="jFechar">FECHAR</button></div>'); };
+  $('btNovidades').onclick = function () { janela('<h3>NOVIDADES</h3><ul><li>🎈 <b>Voo Coral</b>: o dirigível que leva todo mundo pra ilha.</li><li>🛹 <b>Prancha voadora</b> na queda livre.</li><li>❄ <b>Parede de gelo</b> para se proteger.</li><li>🎯 Miras 2x, 4x e 8x.</li><li>🏝 Ilha Coral com 7 cidades, lago e ilhotas.</li><li>🏭 Fábrica com chaminés e silos na Usina Velha.</li><li>🌾 Moinho de vento na Fazenda Sol.</li><li>🪖 Soldado e armas novos.</li></ul><p style="font-size:12px;opacity:.8">Créditos: "Soldier" de Mad Troll Studio, "Parachute" e "Airship" de Poly by Google e "Low Poly Weapons Pack" (Poly Pizza, poly.pizza).</p><div class="bts"><button class="bt-pq" id="jFechar">FECHAR</button></div>'); };
   $('btConfig').onclick = function () {
     janela('<h3>CONFIGURAÇÕES</h3><p>Gráficos:</p><div class="bts">' + ['baixa', 'media', 'alta'].map(function (q) { return '<button class="bt-pq" data-q="' + q + '"' + (cfg.qual === q ? ' style="background:#2a9d3a"' : '') + '>' + q.toUpperCase() + '</button>'; }).join('') + '</div><p>Sensibilidade da câmera: <b id="jSv">' + cfg.sens.toFixed(1) + '</b></p><div class="bts"><button class="bt-pq" id="jSm">−</button><button class="bt-pq" id="jSp">+</button></div><p style="font-size:12px;opacity:.8">Mudar gráficos recarrega o jogo.</p><div class="bts"><button class="bt-pq" id="jFechar">FECHAR</button></div>');
     [].forEach.call(document.querySelectorAll('#janela [data-q]'), function (b) { b.onclick = function () { gravar('ql_qual', b.dataset.q); location.reload(); }; });
@@ -342,14 +342,14 @@
   var mItens = { leve: 0xffd23f, media: 0x4caf50, cartucho: 0xe53935, pesada: 0x2f6fe8, colete: 0x6b7d3a, capacete: 0x55603f, kit: 0xffffff, gelo: 0x8fe9ff, mira2x: 0xff7043, mira4x: 0xab47bc, mira8x: 0x26c6da, moeda: 0xffc928 };
   function modeloItem(it) {
     var g = new THREE.Group();
-    if (it.tipo === 'arma') { var m = AR.modelo(it.arma); m.rotation.set(0, 0, Math.PI / 2); m.rotation.y = Math.PI / 2; m.scale.setScalar(1.4); m.position.y = 0.12; g.add(m); }
+    if (it.tipo === 'arma') { var m = AR.modelo(it.arma); if (m.userData.lp) { m.rotation.set(0, 0, Math.PI / 2); m.position.y = 0.12; } else { m.rotation.set(0, 0, Math.PI / 2); m.rotation.y = Math.PI / 2; m.scale.setScalar(1.4); m.position.y = 0.12; } g.add(m); }
     else if (it.tipo === 'colete') { var c = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.55, 0.25), new THREE.MeshLambertMaterial({ color: mItens.colete })); c.position.y = 0.3; g.add(c); }
     else if (it.tipo === 'capacete') { var h = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ color: mItens.capacete })); h.position.y = 0.05; g.add(h); }
     else if (it.tipo === 'kit') { var k = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.28, 0.3), new THREE.MeshLambertMaterial({ color: 0xffffff })); k.position.y = 0.14; g.add(k); var x1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.06, 0.31), new THREE.MeshBasicMaterial({ color: 0xe53935 })); x1.position.y = 0.16; g.add(x1); var x2 = x1.clone(); x2.rotation.y = Math.PI / 2; x2.scale.set(1, 1, 0.65); g.add(x2); }
     else if (it.tipo === 'gelo') { var gm = new THREE.Mesh(new THREE.OctahedronGeometry(0.22, 0), mGelo); gm.position.y = 0.3; g.add(gm); }
     else if (it.tipo === 'moeda') { var mo = new THREE.MeshPhongMaterial({ color: 0xffc928, shininess: 100, specular: 0xffffff }); for (var q = 0; q < 4; q++) { var cn = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.04, 16), mo); cn.position.set((q % 2) * 0.12, 0.03 + q * 0.045, (q > 1 ? 0.08 : 0)); g.add(cn); } }
     else if (/^mira/.test(it.tipo)) { var mr = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.35, 10), new THREE.MeshLambertMaterial({ color: 0x222222 })); mr.rotation.z = Math.PI / 2; mr.position.y = 0.1; g.add(mr); var lr = new THREE.Mesh(new THREE.CircleGeometry(0.06, 10), new THREE.MeshBasicMaterial({ color: mItens[it.tipo] })); lr.position.set(0.18, 0.1, 0); lr.rotation.y = Math.PI / 2; g.add(lr); }
-    else { var b = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.22, 0.24), new THREE.MeshLambertMaterial({ color: mItens[it.tipo] || 0xffffff })); b.position.y = 0.11; g.add(b); }
+    else { var cm = AR.municao && AR.municao(it.tipo); if (cm) { cm.position.y = 0.2; g.add(cm); } else { var b = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.22, 0.24), new THREE.MeshLambertMaterial({ color: mItens[it.tipo] || 0xffffff })); b.position.y = 0.11; g.add(b); } }
     var rar = it.tipo === 'arma' ? COR_RAR[it.arma] : it.nv || 1, anel = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.5, 24), new THREE.MeshBasicMaterial({ color: [0, 0x7de07a, 0x5fb0ff, 0xc77dff, 0xffb43f][rar] || 0xffffff, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
     anel.rotation.x = -Math.PI / 2; anel.position.y = 0.03; g.add(anel);
     var corR = [0, 0x7de07a, 0x5fb0ff, 0xc77dff, 0xffb43f][rar] || 0xffffff, facho = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.32, 3.2, 8, 1, true), new THREE.MeshBasicMaterial({ color: corR, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); facho.position.y = 1.6; g.add(facho);
@@ -676,7 +676,7 @@
   var _alvo = new THREE.Vector3(), mirando = null;
   function camera(dt) {
     var e = eu, k = Math.min(1, dt * 14);
-    if (modo === 'cabine' || modo === 'trem') { var tp = TREM.grupo.position, dist = modo === 'cabine' ? 30 : 36; cam.position.set(tp.x - Math.sin(ui.yaw) * Math.cos(ui.pitch) * dist, tp.y + 6 + Math.sin(ui.pitch) * dist, tp.z - Math.cos(ui.yaw) * Math.cos(ui.pitch) * dist); var fr = TREM.grupo.rotation.y, adiante = modo === 'cabine' ? -2 : 14; _alvo.set(tp.x + Math.sin(fr) * adiante, tp.y, tp.z + Math.cos(fr) * adiante); cam.lookAt(_alvo); cam.fov = 70; cam.updateProjectionMatrix(); return; }
+    if (modo === 'cabine' || modo === 'trem') { var tp = TREM.grupo.position, dist = modo === 'cabine' ? 62 : 58; cam.position.set(tp.x - Math.sin(ui.yaw) * Math.cos(ui.pitch) * dist, tp.y + 6 + Math.sin(ui.pitch) * dist, tp.z - Math.cos(ui.yaw) * Math.cos(ui.pitch) * dist); var fr = TREM.grupo.rotation.y, adiante = modo === 'cabine' ? -4 : 20; _alvo.set(tp.x + Math.sin(fr) * adiante, tp.y, tp.z + Math.cos(fr) * adiante); cam.lookAt(_alvo); cam.fov = 70; cam.updateProjectionMatrix(); return; }
     if (P && P.assistir && modo === 'morto') { var o2 = outros[P.assistir]; if (!o2 || o2.est === 'morto') { var vivos = Object.keys(outros).filter(function (q) { return outros[q].est === 'chao'; }); P.assistir = vivos.length ? +vivos[0] : 0; } if (o2) { cam.position.lerp(new THREE.Vector3(o2.x - Math.sin(o2.ry) * 4, o2.y + 2.4, o2.z - Math.cos(o2.ry) * 4), k); _alvo.set(o2.x, o2.y + 1.4, o2.z); cam.lookAt(_alvo); } return; }
     var ar = e.est === 'ar' || e.est === 'para', mira = miraAtual(), escopo = ui.ads && (mira === '4x' || mira === '8x');
     var fovAlvo = ui.ads ? (mira === '8x' ? 9 : mira === '4x' ? 18 : mira === '2x' ? 34 : 46) : (ar ? 75 : 70);
@@ -752,7 +752,7 @@
   function paraquedas(o, b, ligado) {
     if (ligado && !o.para) { o.para = BO.paraquedas([0xe8572a, 0x2f86e8, 0x9be81f, 0xb24bff][Math.floor(Math.random() * 4)]); cena.add(o.para); }
     if (!ligado && o.para) { cena.remove(o.para); o.para = null; }
-    if (o.para) { o.para.position.set(b.raiz.position.x, b.raiz.position.y + 1.55 + 2.25, b.raiz.position.z); o.para.rotation.y = b.raiz.rotation.y; o.para.rotation.z = Math.sin(performance.now() / 600) * 0.06; }
+    if (o.para) { o.para.position.set(b.raiz.position.x, b.raiz.position.y + (o.para.userData.alt || 3.8), b.raiz.position.z); o.para.rotation.y = b.raiz.rotation.y; o.para.rotation.z = Math.sin(performance.now() / 600) * 0.06; }
   }
   function animarOutro(o, dt) {
     var b = o.b, vis = o.est !== 'trem' && o.est !== 'morto';
@@ -769,7 +769,8 @@
   }
 
   /* ---------- começo ---------- */
-  trocarIlha(777); montarLobby(); pintarPerfil(); quadro();
+  pintarPerfil(); quadro();
+  BO.carregar(function () { BO.carregarPara(function () { AR.carregar(function () { MU.carregarNave(function (n) { if (n) TREM.trocarModelo(n); trocarIlha(777); montarLobby(); }); }); }); });
   document.addEventListener('pointerdown', function () { S.iniciar(); }, { once: true });
   window.__QL = { contar: function () { return [Object.keys(itensMesh).length, Object.keys(baus).length, P ? Object.keys(P.itens).length : -1, eu.x.toFixed(0), eu.z.toFixed(0)]; }, ver: function (a, b) { modo = 'ver'; cam.position.set(a[0], a[1], a[2]); cam.lookAt(b[0], b[1], b[2]); cam.fov = 60; cam.updateProjectionMatrix(); TREM.grupo.visible = false; return I.cidades.map(function (c) { return [c.nome, Math.round(c.x), Math.round(c.z), Math.round(c.alt), !!c.fabrica]; }); }, equipar: function () { mandar({ t: 'dbg' }); }, eu: eu, inv: function () { return inv; }, ui: ui, P: function () { return P; }, outros: function () { return outros; }, mandar: mandar, modo: function () { return modo; }, fps: function () { return fpsM; }, cam: cam };
 })();

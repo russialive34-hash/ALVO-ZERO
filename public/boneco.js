@@ -22,7 +22,7 @@
     if (CACHE[r]) return CACHE[r]; var R = BO.ROUPAS[r] || BO.ROUPAS[0];
     return (CACHE[r] = { jaq: mat(R.jaq, 0.7), cal: mat(R.cal, 0.85), cab: mat(R.cab, 0.8), pele: mat(R.pele, 0.6), det: mat(R.det, 0.4, { emissive: R.ext === 'oculos' && r === 1 ? R.det : 0x000000, emissiveIntensity: 0.6 }), bota: mat(0x1a1714, 0.6), cin: mat(0x2a2420, 0.5), mochila: mat(0x4a4436, 0.85), preto: mat(0x0e0e10, 0.3), camisa: mat(0xe8e4dc, 0.9), colete: mat(0x55603f, 0.8), capacete: mat(0x47503a, 0.5) });
   }
-  BO.criar = function (roupa) {
+  var criarProc = BO.criarProc = function (roupa) {
     var M = mats(roupa | 0), R = BO.ROUPAS[roupa | 0] || BO.ROUPAS[0];
     var raiz = new THREE.Group(), o = { raiz: raiz, fase: Math.random() * 6, armaId: null };
     var corpo = o.corpo = junta(raiz, 0, 0, 0); // gira o corpo todo (queda livre)
@@ -76,10 +76,63 @@
     o.fogo = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.6, 8), new THREE.MeshBasicMaterial({ color: 0x66e0ff, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false })); o.fogo.rotation.x = -Math.PI / 2; o.fogo.position.set(0, -0.06, -0.95); pr.add(o.fogo);
     return o;
   };
+  /* ---------- soldado (modelo 3D) com esqueleto feito por código ---------- */
+  var SOLD = null;
+  BO.carregar = function (cb) {
+    fetch('modelos/soldado.json').then(function (r) { return r.json(); }).then(function (d) {
+      var p = d.partes[0], E = 1.8 / 1.93, pos = p.pos.map(function (v) { return v * E; }), n = pos.length / 3;
+      var geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      if (p.nor) geo.setAttribute('normal', new THREE.Float32BufferAttribute(p.nor, 3)); if (p.uv) geo.setAttribute('uv', new THREE.Float32BufferAttribute(p.uv, 2)); geo.setIndex(p.idx); if (!p.nor) geo.computeVertexNormals();
+      // juntas (o modelo está em pose A, olhando para +z)
+      var J = { quad: [0, 0.97, 0], tronco: [0, 1.0, 0], pesc: [0, 1.45, 0], cab: [0, 1.48, 0], ombE: [-0.19, 1.35, 0], cotE: [-0.19, 1.075, 0], ombD: [0.19, 1.35, 0], cotD: [0.19, 1.075, 0], qE: [-0.1, 0.9, 0], jE: [-0.1, 0.49, 0], qD: [0.1, 0.9, 0], jD: [0.1, 0.49, 0] };
+      var NOMES = ['quad', 'tronco', 'pesc', 'cab', 'ombE', 'cotE', 'ombD', 'cotD', 'qE', 'jE', 'qD', 'jD'], idx = {}; NOMES.forEach(function (k, i) { idx[k] = i; });
+      var si = new Uint16Array(n * 4), sw = new Float32Array(n * 4), NOR = p.nor ? p.nor.slice() : null;
+      for (var i = 0; i < n; i++) {
+        var x = pos[i * 3], y = pos[i * 3 + 1], b, lado = x < 0 ? 'E' : 'D', ax = Math.abs(x);
+        var braco = y > 0.6 && ax > 0.205 + Math.max(0, 1.36 - y) * 0.12 && (y > 0.86 || ax > 0.3);
+        if (!braco && y < 0.86) b = (y > 0.47 ? 'q' : 'j') + lado;
+        else if (y > 1.47 && ax < 0.17) b = 'cab';
+        else if (braco) { var sx = 0.19, sy = 1.35, wx = 0.49, wy = 0.89, t = ((ax - sx) * (wx - sx) + (y - sy) * (wy - sy)) / ((wx - sx) * (wx - sx) + (wy - sy) * (wy - sy)); b = (t < 0.48 ? 'omb' : 'cot') + lado; }
+        else if (y < 0.98) b = 'quad'; else b = 'tronco';
+        si[i * 4] = idx[b]; sw[i * 4] = 1;
+        if (b.indexOf('omb') === 0 || b.indexOf('cot') === 0) {
+          var a = lado === 'E' ? 0.58 : -0.58, cs = Math.cos(a), sn = Math.sin(a), ox = lado === 'E' ? -0.19 : 0.19, oy = 1.35, rx = x - ox, ry = y - oy;
+          pos[i * 3] = ox + rx * cs - ry * sn; pos[i * 3 + 1] = oy + rx * sn + ry * cs;
+          if (p.nor) { var nx = p.nor[i * 3], ny = p.nor[i * 3 + 1]; NOR[i * 3] = nx * cs - ny * sn; NOR[i * 3 + 1] = nx * sn + ny * cs; }
+        }
+      }
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); if (p.nor) geo.setAttribute('normal', new THREE.Float32BufferAttribute(NOR, 3));
+      geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4)); geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
+      geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 1, 0), 1.8);
+      var tex = new THREE.TextureLoader().load('modelos/' + p.tex); tex.flipY = false;
+      SOLD = { geo: geo, mat: new THREE.MeshLambertMaterial({ map: tex, skinning: true }), J: J, NOMES: NOMES };
+      cb && cb();
+    }).catch(function () { cb && cb(); });
+  };
+  BO.criar = function (roupa) {
+    var o = criarProc(roupa); if (!SOLD) return o;
+    // tira o boneco de código e coloca o soldado com esqueleto
+    o.corpo.remove(o.quad); var J = SOLD.J, B = {};
+    SOLD.NOMES.forEach(function (k) { B[k] = new THREE.Bone(); });
+    var pais = { tronco: 'quad', pesc: 'tronco', cab: 'pesc', ombE: 'tronco', cotE: 'ombE', ombD: 'tronco', cotD: 'ombD', qE: 'quad', jE: 'qE', qD: 'quad', jD: 'qD' };
+    SOLD.NOMES.forEach(function (k) {
+      var pai = pais[k], pj = pai ? J[pai] : [0, 0, 0];
+      B[k].position.set(J[k][0] - pj[0], J[k][1] - pj[1], J[k][2] - pj[2]); if (pai) B[pai].add(B[k]);
+    });
+    var malha = new THREE.SkinnedMesh(SOLD.geo, SOLD.mat); malha.castShadow = true; malha.frustumCulled = true;
+    malha.add(B.quad); malha.bind(new THREE.Skeleton(SOLD.NOMES.map(function (k) { return B[k]; })));
+    o.corpo.add(malha);
+    o.quad = B.quad; o.tronco = B.tronco; o.cab = B.cab;
+    o.be = { omb: B.ombE, cot: B.cotE, mao: B.cotE }; o.bd = { omb: B.ombD, cot: B.cotD, mao: B.cotD };
+    o.pe = { q: B.qE, j: B.jE }; o.pd = { q: B.qD, j: B.jD };
+    o.tronco.add(o.arma); o.arma.position.set(0.17, 0.32, 0.3);
+    o.colete = new THREE.Object3D(); o.capacete = new THREE.Object3D(); o.soldado = true;
+    return o;
+  };
   BO.arma = function (o, id) {
     if (o.armaId === id) return; o.armaId = id;
     while (o.arma.children.length) o.arma.remove(o.arma.children[0]);
-    if (id && window.ARMAS3D) { var m = window.ARMAS3D.modelo(id); m.rotation.y = Math.PI; m.scale.setScalar(1.25); if (id === 'p9') m.position.set(-0.05, 0.05, 0.05); o.arma.add(m); }
+    if (id && window.ARMAS3D) { var m = window.ARMAS3D.modelo(id); if (m.userData.lp) { m.position.set(0, 0, id === 'p9' ? 0.12 : 0.18); } else { m.rotation.y = Math.PI; m.scale.setScalar(1.25); if (id === 'p9') m.position.set(-0.05, 0.05, 0.05); } o.arma.add(m); }
   };
   BO.protecao = function (o, colete, capacete) { o.colete.visible = colete > 0; o.capacete.visible = capacete > 0; };
 
@@ -119,7 +172,18 @@
     rot(o.pe.q, pE, 0, 0, k); rot(o.pd.q, pD, 0, 0, k); rot(o.pe.j, jE, 0, 0, k); rot(o.pd.j, jD, 0, 0, k);
   };
   // paraquedas
+  var PARA = null;
+  BO.carregarPara = function (cb) {
+    fetch('modelos/paraquedas.json').then(function (r) { return r.json(); }).then(function (d) {
+      var g = new THREE.Group();
+      d.partes.forEach(function (p) { var geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(p.pos, 3)); if (p.nor) geo.setAttribute('normal', new THREE.Float32BufferAttribute(p.nor, 3)); if (p.uv) geo.setAttribute('uv', new THREE.Float32BufferAttribute(p.uv, 2)); geo.setIndex(p.idx); if (!p.nor) geo.computeVertexNormals();
+        var m = new THREE.MeshLambertMaterial({ color: new THREE.Color(p.cor[0], p.cor[1], p.cor[2]), side: THREE.DoubleSide }); if (p.tex) { var t = new THREE.TextureLoader().load('modelos/' + p.tex); t.flipY = false; m.map = t; }
+        g.add(new THREE.Mesh(geo, m)); });
+      g.scale.setScalar(0.75); PARA = g; cb && cb();
+    }).catch(function () { cb && cb(); });
+  };
   BO.paraquedas = function (cor) {
+    if (PARA) { var c = new THREE.Group(), m = PARA.clone(); c.add(m); c.userData.alt = 1.05; return c; }
     var g = new THREE.Group(), segs = 8, m1 = mat(cor || 0xe8572a, 0.6, { side: THREE.DoubleSide }), m2 = mat(0xf5f0e6, 0.6, { side: THREE.DoubleSide });
     for (var i = 0; i < segs; i++) { var geo = new THREE.SphereGeometry(2.6, 6, 6, i / segs * Math.PI * 2, Math.PI * 2 / segs, 0, Math.PI * 0.38); var p = new THREE.Mesh(geo, i % 2 ? m1 : m2); p.scale.set(1.25, 0.55, 0.8); g.add(p); }
     var lm = new THREE.LineBasicMaterial({ color: 0x222222 }), pts = [];
