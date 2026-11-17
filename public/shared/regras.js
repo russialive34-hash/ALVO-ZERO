@@ -8,7 +8,7 @@
     QUEDA: 13, MERGULHO: 40, PLANA: 22, ACELERA: 34, PARA_V: 5.5, PARA_H: 9.5, ABRE_PARA: 60,
     TREM_ALT: 210, TREM_VEL: 30,
     VIDA: 200, MAX_JOG: 24,
-    ESPERA: 30, GELO_VIDA: 220, GELO_TEMPO: 25
+    ESPERA: 5, GELO_VIDA: 220, GELO_TEMPO: 25
   };
 
   /* ---------- números aleatórios e ruído ---------- */
@@ -238,8 +238,8 @@
   function acertaCorpo(o, d, p, agachado) {
     var hy = agachado ? 1.2 : 1.62, cx = p.x - o[0], cy = p.y + hy - o[1], cz = p.z - o[2];
     var t = cx * d[0] + cy * d[1] + cz * d[2];
-    if (t > 0) { var qx = cx - d[0] * t, qy = cy - d[1] * t, qz = cz - d[2] * t; if (qx * qx + qy * qy + qz * qz < 0.2 * 0.2) return { t: t, cabeca: true }; }
-    var tt = laje(o, d, [p.x - 0.3, p.y, p.z - 0.3], [p.x + 0.3, p.y + (agachado ? 1.05 : 1.45), p.z + 0.3]);
+    if (t > 0) { var qx = cx - d[0] * t, qy = cy - d[1] * t, qz = cz - d[2] * t; if (qx * qx + qy * qy + qz * qz < 0.27 * 0.27) return { t: t, cabeca: true }; }
+    var tt = laje(o, d, [p.x - 0.42, p.y, p.z - 0.42], [p.x + 0.42, p.y + (agachado ? 1.05 : 1.45), p.z + 0.3]);
     return tt !== null ? { t: tt, cabeca: false } : null;
   }
 

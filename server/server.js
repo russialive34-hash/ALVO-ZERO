@@ -139,6 +139,7 @@ function aplicar(p, j, it) {
 function dano(p, alvo, base, cabeca, por, arma) {
   if (alvo.est === 'morto' || alvo.est === 'trem' || alvo.est === 'cabine') return 0;
   let d = base * (cabeca ? (arma === 'l7' ? 2.5 : 2) : 1);
+  if (por && por.bot && !alvo.bot) d *= 0.6;
   const prot = cabeca ? alvo.capacete : alvo.colete;
   if (prot.nv > 0 && prot.dur > 0) { const abs = d * G.PROTECAO[prot.nv]; prot.dur = Math.max(0, prot.dur - abs); d -= abs; if (prot.dur <= 0) prot.nv = 0; }
   d = Math.round(d); alvo.hp -= d; alvo.cura = 0; if (por) por.dano += d;
@@ -167,10 +168,14 @@ function atirar(p, j, o, d, arma) {
   const w = A[arma], gelos = [...p.gelos.values()];
   const parede = G.raioMundo(p.I, o, d, w.alc, gelos);
   let alvo = null, tAlvo = parede, cab = false;
+  const tVolta = j.bot ? p.tempo : p.tempo - 0.18;
   for (const x of p.js.values()) {
     if (x === j || x.est === 'morto' || x.est === 'trem' || x.est === 'cabine') continue;
     if (Math.abs(x.x - o[0]) > w.alc + 2 || Math.abs(x.z - o[2]) > w.alc + 2) continue;
-    const h = G.acertaCorpo(o, d, x, x.ag); if (h && h.t < tAlvo) { tAlvo = h.t; alvo = x; cab = h.cabeca; }
+    // testa onde ele está agora e onde estava um instante atrás (o que o atirador viu na tela)
+    let pos = x; if (x.hist && !j.bot) { for (let k = x.hist.length - 1; k >= 0; k--) if (x.hist[k].t <= tVolta) { pos = x.hist[k]; break; } }
+    const h1 = G.acertaCorpo(o, d, x, x.ag), h2 = pos !== x ? G.acertaCorpo(o, d, pos, pos.ag) : null, h = h1 && (!h2 || h1.t <= h2.t) ? h1 : h2;
+    if (h && h.t < tAlvo) { tAlvo = h.t; alvo = x; cab = h.cabeca; }
   }
   // parede de gelo levou o tiro
   if (!alvo) gelos.forEach(g => { if (g._hit) { g.hp -= w.dano * (w.chumbos ? 0.6 : 1); if (g.hp <= 0) quebrarGelo(p, g); else ev(p, 'geloDano', { id: g.id, hp: Math.round(g.hp) }); } g._hit = false; }); else gelos.forEach(g => { g._hit = false; });
@@ -262,9 +267,9 @@ function pensarBot(p, b, dt) {
     b.ry = Math.atan2(dx, dz); b.pi = Math.atan2(ini.y - b.y, d);
     if (b.gelos > 0 && b.hp < 110 && d > 6 && Math.random() < dt * 0.6) porGelo(p, b, b.ry);
     if (w && w.pente > 0 && b.recarga <= 0) {
-      if (p.tempo - b.ultTiro >= A0.cad * (1.6 + Math.random())) {
+      if (p.tempo - b.ultTiro >= A0.cad * (2.2 + Math.random() * 1.4)) {
         // erro de mira: piora com distância e com o alvo andando
-        const err = 0.025 + d * 0.0011 + (ini.fl & 1 ? 0.02 : 0) + (b.dific === 2 ? -0.012 : 0);
+        const err = 0.045 + d * 0.0016 + (ini.fl & 1 ? 0.03 : 0) + (b.dific === 2 ? -0.012 : 0);
         const o = [b.x, b.y + 1.5, b.z], tx = ini.x + (Math.random() - 0.5) * err * d * 2.2, ty = ini.y + (ini.ag ? 0.8 : 1.15) + (Math.random() - 0.5) * err * d * 2.2 + (Math.random() < 0.1 ? 0.45 : 0), tz = ini.z + (Math.random() - 0.5) * err * d * 2.2;
         const dd = [tx - o[0], ty - o[1], tz - o[2]], l = Math.hypot(dd[0], dd[1], dd[2]);
         disparar(p, b, o, dd.map(v => v / l));
@@ -323,8 +328,11 @@ function passo(p, dt) {
     p.dropsCaindo = p.dropsCaindo.filter(d => { if (p.tempo >= d.ate) { dropNoChao(p, d); return false; } return true; });
     // gelos derretem
     for (const g of p.gelos.values()) if (p.tempo > g.ate) quebrarGelo(p, g);
+    for (const j of p.js.values()) { (j.hist || (j.hist = [])).push({ t: p.tempo, x: j.x, y: j.y, z: j.z, ag: j.ag }); if (j.hist.length > 16) j.hist.shift(); }
     for (const j of p.js.values()) {
       if (j.est === 'morto') continue;
+      // ganha 1 gelo a cada 20 s (até 4); mais que isso só pegando no chão
+      if (j.est === 'chao') { j.geloT = (j.geloT || 0) + dt; if (j.geloT >= 20) { j.geloT = 0; if (j.gelos < 4) { j.gelos++; if (!j.bot) enviar(j, { t: 'ev', e: 'ganhouGelo', n: j.gelos }); } } }
       if (j.bot) pensarBot(p, j, dt);
       else { if (j.recarga > 0) { j.recarga -= dt; if (j.recarga <= 0) { recarregar(j, true); j.recarga = 0; } } if (j.cura > 0) { j.cura -= dt; if (j.cura <= 0) { j.cura = 0; if (j.kits > 0) { j.kits--; j.hp = Math.min(R.VIDA, j.hp + 75); } } } }
     }
@@ -403,6 +411,15 @@ function iniciar(porta) {
       else if (m.t === 'recarregar') recarregar(j, false);
       else if (m.t === 'curar') { if (j.kits > 0 && j.hp < R.VIDA && j.cura <= 0 && j.est === 'chao') j.cura = 3; }
       else if (m.t === 'gelo') porGelo(p, j, +m.ry || j.ry);
+      else if (m.t === 'largarItem') {
+        const t = String(m.tipo || ''); let it = null;
+        if (MUN_MAX[t] !== undefined && j.mun[t] > 0) { const q = Math.min(j.mun[t], (m.qtd | 0) || j.mun[t]); j.mun[t] -= q; it = { tipo: t, qtd: q }; }
+        else if (t === 'kit' && j.kits > 0) { j.kits--; it = { tipo: 'kit', qtd: 1 }; }
+        else if (t === 'gelo' && j.gelos > 0) { it = { tipo: 'gelo', qtd: j.gelos }; j.gelos = 0; }
+        else if ((t === 'colete' || t === 'capacete') && j[t].nv) { it = { tipo: t, nv: j[t].nv, dur: j[t].dur }; j[t] = { nv: 0, dur: 0 }; }
+        else if (/^mira(2x|4x|8x)$/.test(t) && j.miras[t.slice(4)]) { delete j.miras[t.slice(4)]; it = { tipo: t }; }
+        if (it) soltar(p, it, j.x + Math.sin(j.ry) * 1.2, j.y, j.z + Math.cos(j.ry) * 1.2);
+      }
       else if (m.t === 'largar') { const s = m.i | 0; const w = j.armas[s]; if (w) { j.armas[s] = null; soltar(p, { tipo: 'arma', arma: w.a, pente: w.pente }, j.x, j.y, j.z); if (j.ativa === s) j.ativa = j.armas[1 - s] ? 1 - s : -1; } }
     });
     ws.on('close', () => {

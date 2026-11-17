@@ -26,7 +26,7 @@
   var CEU = MU.ceu(cena), ZONA = MU.zona(cena), TREM = MU.trem(cena); ZONA.mesh.visible = false;
 
   /* ---------- estado ---------- */
-  var esperaT = 0, modo = 'lobby', meuId = 0, ilha = null, I = null, P = null; // P = partida atual
+  var esperandoPartida = false, esperaT = 0, modo = 'lobby', meuId = 0, ilha = null, I = null, P = null; // P = partida atual
   var eu = { x: 0, y: 0, z: 0, vy: 0, ry: 0, est: 'cabine', chao: true, ag: false };
   var inv = { a: [null, null], at: -1, m: {}, c: [0, 0], k: [0, 0], kit: 0, g: 0, mi: [], kl: 0, rc: 0, cu: 0, hp: 200 };
   var ui = { yaw: 0, pitch: 0.02, joy: { x: 0, y: 0 }, tiro: false, ads: false, recuo: 0 };
@@ -111,7 +111,7 @@
     S.iniciar(); S.clicar(); if (!meuNome) return pedirNome(function () { $('btDecolar').click(); });
     if (celular && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function () {});
     conectar(function () { mandar({ t: 'jogar', nome: meuNome, roupa: minhaRoupa }); });
-    entrarCabine();
+    $('btDecolar').textContent = 'ENTRANDO…'; $('btDecolar').disabled = true; esperandoPartida = true;
   };
   $('btComecar').onclick = function () { S.clicar(); mandar({ t: 'comecar' }); };
   // girar o boneco no lobby arrastando
@@ -134,7 +134,7 @@
   function receber(m) {
     switch (m.t) {
       case 'bemvindo': meuId = m.id; break;
-      case 'cabine': $('cConta').textContent = m.conta; $('cJog').textContent = m.js.filter(function (j) { return !j.bot; }).length + ' jogador(es) no avião · completa com bots'; m.js.forEach(function (j) { nomes[j.id] = j.nome; }); break;
+      case 'cabine': if (esperandoPartida) $('btDecolar').textContent = 'DECOLANDO ' + m.conta + 's'; $('cConta').textContent = m.conta; $('cJog').textContent = m.js.filter(function (j) { return !j.bot; }).length + ' jogador(es) no avião · completa com bots'; m.js.forEach(function (j) { nomes[j.id] = j.nome; }); break;
       case 'inicio': iniciar(m); break;
       case 'q': estado(m); break;
       case 'corrige': eu.x = m.x; eu.y = m.y; eu.z = m.z; eu.vy = 0; break;
@@ -163,7 +163,8 @@
 
   /* ---------- começo da partida ---------- */
   function iniciar(m) {
-    $('carregando').hidden = false; $('carTxt').textContent = 'montando a ilha…';
+    esperandoPartida = false; $('btDecolar').textContent = 'DECOLAR'; $('btDecolar').disabled = false;
+    if (meuBoneco && meuBoneco.raiz.parent) meuBoneco.raiz.parent.remove(meuBoneco.raiz); meuBoneco = BO.criar(minhaRoupa); cena.add(meuBoneco.raiz); BO.arma(meuBoneco, null);
     setTimeout(function () {
       trocarIlha(m.seed); if (lobby) { cena.remove(lobby.g); lobby = null; }
       P = { seed: m.seed, trem: m.trem, t: 0, itens: {}, zona: null, vivos: m.js.length, inicio: performance.now() };
@@ -233,6 +234,7 @@
       case 'item+': P.itens[m.it.id] = m.it; break;
       case 'item-': delete P.itens[m.id]; if (itensMesh[m.id]) { cena.remove(itensMesh[m.id]); delete itensMesh[m.id]; } if (m.por === meuId) S.pegar(); break;
       case 'gelo+': criarGelo(m.g); S.gelo(m.g); break;
+      case 'ganhouGelo': aviso('+1 parede de gelo ❄ (' + m.n + ')', 1500); S.pegar(); break;
       case 'geloDano': var gd = gelos[m.id]; if (gd) { gd.g.children.forEach(function (c) { c.material = c.material.clone(); c.material.opacity = 0.35 + 0.5 * m.hp / R.GELO_VIDA; }); S.geloQuebra({ x: gd.d.x, y: gd.d.y, z: gd.d.z }); gd.g.position.x += (Math.random() - 0.5) * 0.08; } break;
       case 'gelo-': var gg = gelos[m.id]; if (gg) { S.geloQuebra({ x: gg.d.x, y: gg.d.y, z: gg.d.z }); gg.morrer = 0.4; } break;
       case 'zona': aviso('A zona segura vai encolher!', 3500); S.zona(); break;
@@ -377,7 +379,7 @@
     var perto = Object.keys(P.itens).map(function (k) { return P.itens[k]; }).filter(function (it) { return Math.hypot(it.x - eu.x, it.z - eu.z) < 3 && Math.abs(it.y - eu.y) < 2.5; }).sort(function (a, b) { return Math.hypot(a.x - eu.x, a.z - eu.z) - Math.hypot(b.x - eu.x, b.z - eu.z); }).slice(0, 6);
     // pega sozinho munição da sua arma, kit e gelo
     perto.forEach(function (it) {
-      if (Math.hypot(it.x - eu.x, it.z - eu.z) > 2.6 || pegandoAuto[it.id] > performance.now()) return;
+      if (Math.hypot(it.x - eu.x, it.z - eu.z) > 2.6 || pegandoAuto[it.id] > performance.now() || largouAte > performance.now()) return;
       var serve = false, temArma = inv.a.some(function (w) { return w && A[w[0]].mun === it.tipo; });
       if (it.tipo === 'arma') serve = !inv.a[0] || !inv.a[1] && !inv.a.some(function (w) { return w && w[0] === it.arma; });
       else if (it.tipo === 'colete') serve = it.nv > inv.c[0]; else if (it.tipo === 'capacete') serve = it.nv > inv.k[0];
@@ -451,6 +453,22 @@
   botao('bRec', function () { mandar({ t: 'recarregar' }); S.recarga(inv.a[inv.at] ? inv.a[inv.at][0] : 'ar9', 2); });
   botao('bGelo', function () { if (inv.g > 0 && eu.est === 'chao') { mandar({ t: 'p', x: +eu.x.toFixed(2), y: +eu.y.toFixed(2), z: +eu.z.toFixed(2), ry: +eu.ry.toFixed(2), pi: +ui.pitch.toFixed(2), ag: eu.ag ? 1 : 0, f: 0, e: eu.est }); mandar({ t: 'gelo', ry: ui.yaw }); } });
   botao('bKit', function () { if (inv.kit > 0 && inv.hp < 200) { mandar({ t: 'curar' }); S.cura(); } });
+  // mochila: ver o que tem e jogar fora
+  var largouAte = 0;
+  function abrirMochila() {
+    var l = [];
+    inv.a.forEach(function (w, i) { if (w) l.push({ ic: '🔫', nome: A[w[0]].nome, sub: w[1] + ' no pente', acao: function () { mandar({ t: 'largar', i: i }); } }); });
+    [['leve', 'Munição leve'], ['media', 'Munição média'], ['cartucho', 'Cartuchos'], ['pesada', 'Munição pesada']].forEach(function (m) { if (inv.m[m[0]] > 0) l.push({ ic: ({ leve: '🟨', media: '🟩', cartucho: '🟥', pesada: '🟦' })[m[0]], nome: m[1], sub: inv.m[m[0]] + ' balas', acao: function () { mandar({ t: 'largarItem', tipo: m[0] }); } }); });
+    if (inv.kit) l.push({ ic: '✚', nome: 'Kit médico', sub: inv.kit + ' (larga 1)', acao: function () { mandar({ t: 'largarItem', tipo: 'kit' }); } });
+    if (inv.g) l.push({ ic: '❄', nome: 'Parede de gelo', sub: inv.g + ' unidades', acao: function () { mandar({ t: 'largarItem', tipo: 'gelo' }); } });
+    if (inv.c[0]) l.push({ ic: '🦺', nome: 'Colete Nv.' + inv.c[0], sub: 'resistência ' + inv.c[1], acao: function () { mandar({ t: 'largarItem', tipo: 'colete' }); } });
+    if (inv.k[0]) l.push({ ic: '⛑', nome: 'Capacete Nv.' + inv.k[0], sub: 'resistência ' + inv.k[1], acao: function () { mandar({ t: 'largarItem', tipo: 'capacete' }); } });
+    inv.mi.forEach(function (m) { l.push({ ic: '🎯', nome: 'Mira ' + m, sub: 'acessório', acao: function () { mandar({ t: 'largarItem', tipo: 'mira' + m }); } }); });
+    $('moLista').innerHTML = l.length ? l.map(function (x, i) { return '<div class="mo-it"><i>' + x.ic + '</i><span>' + esc(x.nome) + '<small>' + esc(x.sub) + '</small></span><button data-i="' + i + '">LARGAR</button></div>'; }).join('') : '<p>A mochila está vazia. Pegue coisas nos baús!</p>';
+    [].forEach.call($('moLista').querySelectorAll('button'), function (b) { b.onclick = function () { largouAte = performance.now() + 5000; l[+b.dataset.i].acao(); S.troca(); setTimeout(abrirMochila, 250); }; });
+    $('mochila').hidden = false;
+  }
+  botao('bMochila', abrirMochila); $('moFechar').onclick = function () { $('mochila').hidden = true; };
   $('mini').addEventListener('pointerdown', function (e) { e.stopPropagation(); abrirMapa(); });
   $('btFecharMapa').onclick = function () { $('mapaG').hidden = true; };
   addEventListener('keydown', function (e) {
@@ -504,14 +522,14 @@
       if (d > Math.min(w.alc, 120) || Math.hypot(o.x - eu.x, o.z - eu.z) < 0.6) return;
       var ang = Math.acos(Math.max(-1, Math.min(1, (dx * _d.x + dy * _d.y + dz * _d.z) / d))); if (ang > ma) return;
       var ori = [eu.x, eu.y + 1.5, eu.z], dd = [o.x - ori[0], hy - ori[1], o.z - ori[2]], l = Math.hypot(dd[0], dd[1], dd[2]);
-      if (G.raioMundo(I, ori, dd.map(function (v) { return v / l; }), l, geloArr()) < l - 0.6) return;
+      if (G.raioMundo(I, ori, dd.map(function (v) { return v / l; }), l, geloArr()) < l - 1.2) return;
       ma = ang; melhor = { o: o, x: o.x, y: hy, z: o.z };
     });
     return melhor;
   }
   // segurando o tiro: a câmera gruda no inimigo e sobe pra cabeça
   function grudar(dt) {
-    var a = alvoAuto(ui.ads ? 0.32 : 0.22); if (!a) return;
+    var a = alvoAuto(ui.ads ? 0.45 : 0.32); if (!a) return;
     var dx = a.x - cam.position.x, dz = a.z - cam.position.z, dy = a.y - cam.position.y, yaw = Math.atan2(dx, dz), pitch = -Math.atan2(dy, Math.hypot(dx, dz));
     var dyaw = yaw - ui.yaw; while (dyaw > Math.PI) dyaw -= 2 * Math.PI; while (dyaw < -Math.PI) dyaw += 2 * Math.PI;
     var k = Math.min(1, dt * 9); ui.yaw += dyaw * k; ui.pitch += (pitch - ui.pitch) * k;
@@ -529,7 +547,7 @@
     var o = [_o.x, _o.y, _o.z], d = [_d.x, _d.y, _d.z], t = G.raioMundo(I, o, d, 400, geloArr());
     Object.keys(outros).forEach(function (k) { var x = outros[k]; if (x.est !== 'chao' && x.est !== 'para') return; var h = G.acertaCorpo(o, d, { x: x.x, y: x.y, z: x.z }, x.fl & 4); if (h && h.t < t) t = h.t; });
     var alvo = [o[0] + d[0] * t, o[1] + d[1] * t, o[2] + d[2] * t], ori = [eu.x, eu.y + (eu.ag ? 1.1 : 1.5), eu.z];
-    var au = alvoAuto(ui.ads ? 0.32 : 0.22); if (au) alvo = [au.x, au.y, au.z];
+    var au = alvoAuto(ui.ads ? 0.45 : 0.32); if (au) { var vo = au.o, lead = 0.12; alvo = [au.x + ((vo.tx || vo.x) - vo.x) * 0.5 + 0 * lead, au.y, au.z + ((vo.tz || vo.z) - vo.z) * 0.5]; }
     var dir = [alvo[0] - ori[0], alvo[1] - ori[1], alvo[2] - ori[2]], l = Math.hypot(dir[0], dir[1], dir[2]) || 1; dir = dir.map(function (v) { return v / l; });
     var mov = Math.hypot(ui.joy.x, ui.joy.y) > 0.2 || !eu.noChao, sp = (au ? 0.45 : 1) * (A0.disp || 0) * (A0.chumbos ? 0 : 1) * (mov ? 1.7 : 1) * (ui.ads ? 0.35 : 1) * (eu.ag ? 0.7 : 1) * (1 + ui.recuo * 0.6);
     dir = [dir[0] + (Math.random() - 0.5) * sp * 2, dir[1] + (Math.random() - 0.5) * sp * 2, dir[2] + (Math.random() - 0.5) * sp * 2];
@@ -713,7 +731,8 @@
       if (P.zona) { ZONA.atualizar(P.zona[0], P.zona[1], P.zona[2], dt); var fora = Math.hypot(eu.x - P.zona[0], eu.z - P.zona[1]) > P.zona[2]; $('tJogo').style.boxShadow = fora && eu.est === 'chao' ? 'inset 0 0 80px rgba(60,140,255,.7)' : ''; if (!$('aviso').dataset.fixo) $('aviso').textContent = P.zona[6] < 0 ? '' : (P.zona[7] ? 'Zona fechando: ' : 'A zona segura encolhe em ') + fmt(P.zona[8]); }
       atualizarItens(dt); atualizarDrops(dt); marcas(); pegadas();
       // tiro segurando
-      if (ui.tiro && eu.est === 'chao') { grudar(dt); atirar(agora); }
+      if (eu.est === 'chao' && (ui.tiro || ui.ads)) grudar(dt * (ui.tiro ? 1 : 0.5));
+      if (ui.tiro && eu.est === 'chao') atirar(agora);
       ui.recuo = Math.max(0, ui.recuo - dt * 2.2);
       // envia posição
       if (agora - ultEnvio > 75 && eu.est !== 'trem' && eu.est !== 'morto') { ultEnvio = agora; mandar({ t: 'p', x: +eu.x.toFixed(2), y: +eu.y.toFixed(2), z: +eu.z.toFixed(2), ry: +eu.ry.toFixed(2), pi: +ui.pitch.toFixed(2), ag: eu.ag ? 1 : 0, f: moveu ? 1 : 0, e: eu.est }); }
@@ -737,7 +756,7 @@
   }
   function animarOutro(o, dt) {
     var b = o.b, vis = o.est !== 'trem' && o.est !== 'morto';
-    if (o.tx !== undefined) { var k = Math.min(1, dt * 10); o.x += (o.tx - o.x) * k; o.y += (o.ty - o.y) * k; o.z += (o.tz - o.z) * k; var dr = o.try - o.ry; while (dr > Math.PI) dr -= 2 * Math.PI; while (dr < -Math.PI) dr += 2 * Math.PI; o.ry += dr * k; }
+    if (o.tx !== undefined) { var k = Math.min(1, dt * 18); o.x += (o.tx - o.x) * k; o.y += (o.ty - o.y) * k; o.z += (o.tz - o.z) * k; var dr = o.try - o.ry; while (dr > Math.PI) dr -= 2 * Math.PI; while (dr < -Math.PI) dr += 2 * Math.PI; o.ry += dr * k; }
     var d = Math.hypot(o.x - eu.x, o.z - eu.z); vis = vis && (modo === 'cabine' || d < 260);
     b.raiz.visible = vis; if (!vis) { paraquedas(o, b, false); return; }
     var base = { x: 0, y: 0, z: 0 };

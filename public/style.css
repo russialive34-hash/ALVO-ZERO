@@ -172,3 +172,12 @@ button { font-family: 'Nunito', system-ui; cursor: pointer; }
 .armas .peq { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; line-height: 1.05 !important; padding: 2px 6px !important; }
 .armas .peq svg { display: none; }
 @media (max-height: 340px) { .kit { top: 108px !important; } .gelo { top: 160px !important; } .tiro2 { top: 120px !important; } }
+
+.mochila-bt { left: max(122px, calc(env(safe-area-inset-left) + 114px)) !important; top: 10px !important; bottom: auto !important; width: 44px !important; height: 44px !important; }
+.mochila { position: fixed; inset: 0; z-index: 9; background: rgba(0,10,30,.55); display: flex; align-items: center; justify-content: center; padding: 10px; }
+.mo-cx { background: linear-gradient(180deg, rgba(20,40,90,.96), rgba(10,20,50,.96)); border: 2px solid #5fd0ff; border-radius: 12px; width: min(560px, 94vw); max-height: 88vh; overflow: auto; padding: 10px 14px; }
+.mo-topo { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; } .mo-topo b { font: 400 22px 'Lilita One'; color: #ffd23f; }
+.mo-lista { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.mo-it { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.07); border-radius: 8px; padding: 6px 8px; font: 900 13px 'Nunito'; }
+.mo-it i { font-style: normal; font-size: 22px; width: 30px; text-align: center; } .mo-it span { flex: 1; } .mo-it small { display: block; font-size: 11px; color: #9fd0ff; }
+.mo-it button { font: 900 11px 'Nunito'; color: #fff; background: #d93a4a; border: 0; border-radius: 6px; padding: 6px 8px; }
