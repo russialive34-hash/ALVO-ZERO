@@ -8,7 +8,7 @@
     QUEDA: 13, MERGULHO: 40, PLANA: 22, ACELERA: 34, PARA_V: 5.5, PARA_H: 9.5, ABRE_PARA: 60,
     TREM_ALT: 210, TREM_VEL: 30,
     VIDA: 200, MAX_JOG: 24,
-    ESPERA: 30, GELO_VIDA: 400, GELO_TEMPO: 25
+    ESPERA: 30, GELO_VIDA: 220, GELO_TEMPO: 25
   };
 
   /* ---------- números aleatórios e ruído ---------- */
@@ -197,7 +197,9 @@
   }
   function dentroGelo(g, x, z, r) { var dx = x - g.x, dz = z - g.z, c = Math.cos(g.ry), s = Math.sin(g.ry), lx = dx * c - dz * s, lz = dx * s + dz * c; return Math.abs(lx) < 1.7 + r && Math.abs(lz) < 0.3 + r; }
   function mover(I, o, dx, dz, r, extras) {
-    var y = o.y; if (livre(I, o.x + dx, o.z, r, y, extras)) o.x += dx; if (livre(I, o.x, o.z + dz, r, y, extras)) o.z += dz;
+    var y = o.y;
+    // se já está dentro de uma parede de gelo (ela nasceu em cima), deixa sair
+    if (extras && extras.length) extras = extras.filter(function (g) { return !dentroGelo(g, o.x, o.z, r * 0.9); }); if (livre(I, o.x + dx, o.z, r, y, extras)) o.x += dx; if (livre(I, o.x, o.z + dz, r, y, extras)) o.z += dz;
     var lim = R.MEIO + 40; o.x = Math.max(-lim, Math.min(lim, o.x)); o.z = Math.max(-lim, Math.min(lim, o.z));
   }
   // tiro: distância até a primeira coisa sólida no caminho (paredes, pedras, chão, gelo)

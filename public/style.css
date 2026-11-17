@@ -161,3 +161,14 @@ button { font-family: 'Nunito', system-ui; cursor: pointer; }
 .ar-bt i { font-style: normal; font-size: 26px; } .ar-bt.on { background: rgba(255,210,63,.55); border-color: #ffd23f; }
 .acel { left: max(200px, calc(env(safe-area-inset-left) + 190px)); top: 38%; } .merg { right: max(200px, calc(env(safe-area-inset-right) + 190px)); top: 58%; }
 .grande.para { bottom: 30px !important; }
+
+.pegadas { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
+.peg { position: absolute; left: -12px; top: -12px; width: 24px; height: 24px; font-size: 20px; text-align: center; filter: drop-shadow(0 0 3px #ff3b3b) drop-shadow(0 0 2px #000); }
+.feed { bottom: 112px !important; z-index: 6; }
+.feed div { font-size: 14px !important; background: rgba(0,0,0,.35); padding: 2px 10px; border-radius: 3px; }
+
+.tiro2 { left: max(74px, calc(env(safe-area-inset-left) + 62px)) !important; top: 128px !important; bottom: auto !important; }
+.kit { top: 112px !important; } .gelo { top: 168px !important; }
+.armas .peq { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; line-height: 1.05 !important; padding: 2px 6px !important; }
+.armas .peq svg { display: none; }
+@media (max-height: 340px) { .kit { top: 108px !important; } .gelo { top: 160px !important; } .tiro2 { top: 120px !important; } }

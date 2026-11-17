@@ -96,9 +96,9 @@
   };
   $('btRanking').onclick = function () { fetch('/ranking').then(function (r) { return r.json(); }).catch(function () { return []; }).then(function (l) { janela('<h3>RANKING</h3><table>' + (l.length ? l.map(function (r, i) { return '<tr><td>' + (i + 1) + '</td><td>' + esc(r.nome) + '</td><td>🏆 ' + r.vitorias + '</td><td>💀 ' + r.kills + '</td></tr>'; }).join('') : '<tr><td>Ninguém ainda. Seja o primeiro!</td></tr>') + '</table><div class="bts"><button class="bt-pq" id="jFechar">FECHAR</button></div>'); }); };
   $('btComo').onclick = function () {
-    janela('<h3>COMO JOGAR</h3><ul><li>Espere no <b>vagão</b>, o trem decola e voa sobre a ilha. Aperte <b>PULAR</b> onde quiser cair.</li><li>Na queda você desce na <b>prancha voadora</b>. Empurre pra frente para <b>mergulhar</b> mais rápido. O <b>paraquedas</b> abre sozinho perto do chão.</li><li>Pegue <b>armas, munição, colete, capacete, kit médico, gelo e miras</b> nas casas.</li><li><b>❄ Parede de gelo:</b> levanta uma barreira na sua frente que segura os tiros.</li><li><b>◎ Mira:</b> com mira 2x, 4x ou 8x a visão aproxima.</li><li>Fique dentro da <b>zona segura</b> (fora dela você perde vida). Seja o último vivo para ser <b>CAMPEÃO</b>!</li><li>No PC: WASD, mouse, clique atira, botão direito mira, Espaço pula, C agacha, R recarrega, G gelo, H cura, F pega, 1/2 troca arma, M mapa.</li></ul><div class="bts"><button class="bt-pq" id="jFechar">ENTENDI</button></div>');
+    janela('<h3>COMO JOGAR</h3><ul><li>Espere no <b>avião</b>, ele decola e voa sobre a ilha. Aperte <b>PULAR</b> onde quiser cair.</li><li>Na queda você desce na <b>prancha voadora</b>. Empurre pra frente para <b>mergulhar</b> mais rápido. O <b>paraquedas</b> abre sozinho perto do chão.</li><li>Pegue <b>armas, munição, colete, capacete, kit médico, gelo e miras</b> nas casas.</li><li><b>❄ Parede de gelo:</b> levanta uma barreira na sua frente que segura os tiros.</li><li><b>◎ Mira:</b> com mira 2x, 4x ou 8x a visão aproxima.</li><li>Fique dentro da <b>zona segura</b> (fora dela você perde vida). Seja o último vivo para ser <b>CAMPEÃO</b>!</li><li>No PC: WASD, mouse, clique atira, botão direito mira, Espaço pula, C agacha, R recarrega, G gelo, H cura, F pega, 1/2 troca arma, M mapa.</li></ul><div class="bts"><button class="bt-pq" id="jFechar">ENTENDI</button></div>');
   };
-  $('btNovidades').onclick = function () { janela('<h3>NOVIDADES</h3><ul><li>🚂 <b>Expresso Céu</b>: o trem voador que leva todo mundo pra ilha.</li><li>🛹 <b>Prancha voadora</b> na queda livre.</li><li>❄ <b>Parede de gelo</b> para se proteger.</li><li>🎯 Miras 2x, 4x e 8x.</li><li>🏝 Ilha Coral com 7 cidades, lago e ilhotas.</li><li>🏭 Fábrica com chaminés e silos na Usina Velha.</li><li>🌾 Moinho de vento na Fazenda Sol.</li></ul><div class="bts"><button class="bt-pq" id="jFechar">FECHAR</button></div>'); };
+  $('btNovidades').onclick = function () { janela('<h3>NOVIDADES</h3><ul><li>✈ <b>Voo Coral</b>: o aviãozinho que leva todo mundo pra ilha.</li><li>🛹 <b>Prancha voadora</b> na queda livre.</li><li>❄ <b>Parede de gelo</b> para se proteger.</li><li>🎯 Miras 2x, 4x e 8x.</li><li>🏝 Ilha Coral com 7 cidades, lago e ilhotas.</li><li>🏭 Fábrica com chaminés e silos na Usina Velha.</li><li>🌾 Moinho de vento na Fazenda Sol.</li></ul><div class="bts"><button class="bt-pq" id="jFechar">FECHAR</button></div>'); };
   $('btConfig').onclick = function () {
     janela('<h3>CONFIGURAÇÕES</h3><p>Gráficos:</p><div class="bts">' + ['baixa', 'media', 'alta'].map(function (q) { return '<button class="bt-pq" data-q="' + q + '"' + (cfg.qual === q ? ' style="background:#2a9d3a"' : '') + '>' + q.toUpperCase() + '</button>'; }).join('') + '</div><p>Sensibilidade da câmera: <b id="jSv">' + cfg.sens.toFixed(1) + '</b></p><div class="bts"><button class="bt-pq" id="jSm">−</button><button class="bt-pq" id="jSp">+</button></div><p style="font-size:12px;opacity:.8">Mudar gráficos recarrega o jogo.</p><div class="bts"><button class="bt-pq" id="jFechar">FECHAR</button></div>');
     [].forEach.call(document.querySelectorAll('#janela [data-q]'), function (b) { b.onclick = function () { gravar('ql_qual', b.dataset.q); location.reload(); }; });
@@ -134,7 +134,7 @@
   function receber(m) {
     switch (m.t) {
       case 'bemvindo': meuId = m.id; break;
-      case 'cabine': $('cConta').textContent = m.conta; $('cJog').textContent = m.js.filter(function (j) { return !j.bot; }).length + ' jogador(es) no trem · completa com bots'; m.js.forEach(function (j) { nomes[j.id] = j.nome; }); break;
+      case 'cabine': $('cConta').textContent = m.conta; $('cJog').textContent = m.js.filter(function (j) { return !j.bot; }).length + ' jogador(es) no avião · completa com bots'; m.js.forEach(function (j) { nomes[j.id] = j.nome; }); break;
       case 'inicio': iniciar(m); break;
       case 'q': estado(m); break;
       case 'corrige': eu.x = m.x; eu.y = m.y; eu.z = m.z; eu.vy = 0; break;
@@ -174,7 +174,7 @@
       eu.est = 'trem'; modo = 'trem'; inv = { a: [null, null], at: -1, m: {}, c: [0, 0], k: [0, 0], kit: 0, g: 0, mi: [], kl: 0, rc: 0, cu: 0, hp: 200 };
       cena.fog = new THREE.Fog(NEB, 160, 520); TREM.grupo.visible = true; ZONA.mesh.visible = true;
       mostrar('tJogo'); $('carregando').hidden = true; $('bPularTrem').hidden = false; $('fim').hidden = true;
-      ui.yaw = P.trem.ry; ui.pitch = 0.42; aviso('Escolha onde pular e aperte PULAR', 4000); S.apito();
+      ui.yaw = P.trem.ry; ui.pitch = 0.42; aviso('Escolha onde pular e aperte PULAR do avião', 4000); S.apito();
     }, 60);
   }
   function posTrem() { var tr = P.trem, f = Math.min(1, P.t / tr.dur); return { x: tr.x0 + (tr.x1 - tr.x0) * f, z: tr.z0 + (tr.z1 - tr.z0) * f }; }
@@ -233,6 +233,7 @@
       case 'item+': P.itens[m.it.id] = m.it; break;
       case 'item-': delete P.itens[m.id]; if (itensMesh[m.id]) { cena.remove(itensMesh[m.id]); delete itensMesh[m.id]; } if (m.por === meuId) S.pegar(); break;
       case 'gelo+': criarGelo(m.g); S.gelo(m.g); break;
+      case 'geloDano': var gd = gelos[m.id]; if (gd) { gd.g.children.forEach(function (c) { c.material = c.material.clone(); c.material.opacity = 0.35 + 0.5 * m.hp / R.GELO_VIDA; }); S.geloQuebra({ x: gd.d.x, y: gd.d.y, z: gd.d.z }); gd.g.position.x += (Math.random() - 0.5) * 0.08; } break;
       case 'gelo-': var gg = gelos[m.id]; if (gg) { S.geloQuebra({ x: gg.d.x, y: gg.d.y, z: gg.d.z }); gg.morrer = 0.4; } break;
       case 'zona': aviso('A zona segura vai encolher!', 3500); S.zona(); break;
       case 'fechando': aviso('A zona está fechando! Corra para dentro!', 3500); S.zona(); break;
@@ -301,6 +302,16 @@
       if (d.t > d.dur + 150) { cena.remove(d.g); delete drops[k]; }
     });
   }
+  var pegEl = {};
+  function pegadas() {
+    var usados = {};
+    Object.keys(outros).forEach(function (k) {
+      var o = outros[k]; if (o.est !== 'chao' || (o.vel || 0) < 1) return; var d = Math.hypot(o.x - eu.x, o.z - eu.z); if (d > 32 || d < 1) return;
+      var a = Math.atan2(o.x - eu.x, o.z - eu.z) - ui.yaw, el = pegEl[k]; if (!el) { el = document.createElement('div'); el.className = 'peg'; el.textContent = '👣'; $('pegadas').appendChild(el); pegEl[k] = el; }
+      var r = Math.min(innerHeight * 0.36, 150); el.style.transform = 'translate(' + (-Math.sin(a) * r) + 'px,' + (-Math.cos(a) * r) + 'px) rotate(' + (-a * 180 / Math.PI) + 'deg)'; el.style.opacity = (1 - d / 32) * 0.9 + 0.1; usados[k] = 1;
+    });
+    Object.keys(pegEl).forEach(function (k) { if (!usados[k]) { pegEl[k].remove(); delete pegEl[k]; } });
+  }
   var marcasEl = {};
   function marcas() {
     var usados = {};
@@ -339,6 +350,8 @@
     else { var b = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.22, 0.24), new THREE.MeshLambertMaterial({ color: mItens[it.tipo] || 0xffffff })); b.position.y = 0.11; g.add(b); }
     var rar = it.tipo === 'arma' ? COR_RAR[it.arma] : it.nv || 1, anel = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.5, 24), new THREE.MeshBasicMaterial({ color: [0, 0x7de07a, 0x5fb0ff, 0xc77dff, 0xffb43f][rar] || 0xffffff, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
     anel.rotation.x = -Math.PI / 2; anel.position.y = 0.03; g.add(anel);
+    var corR = [0, 0x7de07a, 0x5fb0ff, 0xc77dff, 0xffb43f][rar] || 0xffffff, facho = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.32, 3.2, 8, 1, true), new THREE.MeshBasicMaterial({ color: corR, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); facho.position.y = 1.6; g.add(facho);
+    g.children.forEach(function (c) { if (c !== anel && c !== facho) c.scale.multiplyScalar(1.5); });
     g.position.set(it.x, it.y, it.z); return g;
   }
   var tItens = 0;
@@ -406,9 +419,20 @@
   tela3d.addEventListener('pointerdown', function (e) {
     if (modo === 'lobby') return;
     if (!celular && e.pointerType === 'mouse') { if (document.pointerLockElement !== tela3d) { tela3d.requestPointerLock && tela3d.requestPointerLock(); return; } if (e.button === 0) ui.tiro = true; if (e.button === 2) alternarMira(); return; }
-    if (olhar.id === null) { olhar.id = e.pointerId; olhar.x = e.clientX; olhar.y = e.clientY; }
+    if (e.pointerType === 'mouse' && olhar.id === null) { olhar.id = e.pointerId; olhar.x = e.clientX; olhar.y = e.clientY; }
   });
   tela3d.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  var toqueOlhar = null;
+  document.addEventListener('touchstart', function (e) {
+    if (modo === 'lobby') return;
+    for (var i = 0; i < e.changedTouches.length; i++) { var t = e.changedTouches[i]; if (toqueOlhar === null && t.target === tela3d && (t.clientX > innerWidth * 0.33 || modo === 'cabine' || modo === 'trem')) { toqueOlhar = { id: t.identifier, x: t.clientX, y: t.clientY }; } }
+  }, { passive: true });
+  document.addEventListener('touchmove', function (e) {
+    if (!toqueOlhar) return;
+    for (var i = 0; i < e.changedTouches.length; i++) { var t = e.changedTouches[i]; if (t.identifier === toqueOlhar.id) { girar(t.clientX - toqueOlhar.x, t.clientY - toqueOlhar.y, 0.0062); toqueOlhar.x = t.clientX; toqueOlhar.y = t.clientY; } }
+  }, { passive: true });
+  function fimToque(e) { if (!toqueOlhar) return; for (var i = 0; i < e.changedTouches.length; i++) if (e.changedTouches[i].identifier === toqueOlhar.id) toqueOlhar = null; }
+  document.addEventListener('touchend', fimToque); document.addEventListener('touchcancel', fimToque);
   tela3d.addEventListener('pointermove', function (e) { if (e.pointerId !== olhar.id) return; girar(e.clientX - olhar.x, e.clientY - olhar.y, 0.0058); olhar.x = e.clientX; olhar.y = e.clientY; });
   addEventListener('pointerup', function (e) { if (e.pointerId === olhar.id) olhar.id = null; if (e.pointerType === 'mouse' && e.button === 0) ui.tiro = false; });
   document.addEventListener('mousemove', function (e) { if (document.pointerLockElement === tela3d) girar(e.movementX, e.movementY, 0.0024); });
@@ -425,7 +449,7 @@
   ['bAcel', 'bMerg'].forEach(function (id) { var el = $(id), k = id === 'bAcel' ? 'acel' : 'merg'; el.addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); ui[k] = true; el.classList.add('on'); }); ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) { el.addEventListener(t, function () { ui[k] = false; el.classList.remove('on'); }); }); });
   botao('bMira', function () { alternarMira(); }); botao('bCorrer', function () { ui.autoCorre = !ui.autoCorre; $('bCorrer').classList.toggle('on', ui.autoCorre); }); botao('bPulo', function () { pulo(); }); botao('bAg', function () { eu.ag = !eu.ag; $('bAg').classList.toggle('on', eu.ag); });
   botao('bRec', function () { mandar({ t: 'recarregar' }); S.recarga(inv.a[inv.at] ? inv.a[inv.at][0] : 'ar9', 2); });
-  botao('bGelo', function () { if (inv.g > 0 && eu.est === 'chao') mandar({ t: 'gelo', ry: ui.yaw }); });
+  botao('bGelo', function () { if (inv.g > 0 && eu.est === 'chao') { mandar({ t: 'p', x: +eu.x.toFixed(2), y: +eu.y.toFixed(2), z: +eu.z.toFixed(2), ry: +eu.ry.toFixed(2), pi: +ui.pitch.toFixed(2), ag: eu.ag ? 1 : 0, f: 0, e: eu.est }); mandar({ t: 'gelo', ry: ui.yaw }); } });
   botao('bKit', function () { if (inv.kit > 0 && inv.hp < 200) { mandar({ t: 'curar' }); S.cura(); } });
   $('mini').addEventListener('pointerdown', function (e) { e.stopPropagation(); abrirMapa(); });
   $('btFecharMapa').onclick = function () { $('mapaG').hidden = true; };
@@ -634,7 +658,7 @@
   var _alvo = new THREE.Vector3(), mirando = null;
   function camera(dt) {
     var e = eu, k = Math.min(1, dt * 14);
-    if (modo === 'cabine' || modo === 'trem') { var tp = TREM.grupo.position, dist = modo === 'cabine' ? 34 : 44; cam.position.set(tp.x - Math.sin(ui.yaw) * Math.cos(ui.pitch) * dist, tp.y + 6 + Math.sin(ui.pitch) * dist, tp.z - Math.cos(ui.yaw) * Math.cos(ui.pitch) * dist); var fr = TREM.grupo.rotation.y, adiante = modo === 'cabine' ? -30 : 20; _alvo.set(tp.x + Math.sin(fr) * adiante, tp.y, tp.z + Math.cos(fr) * adiante); cam.lookAt(_alvo); cam.fov = 70; cam.updateProjectionMatrix(); return; }
+    if (modo === 'cabine' || modo === 'trem') { var tp = TREM.grupo.position, dist = modo === 'cabine' ? 30 : 36; cam.position.set(tp.x - Math.sin(ui.yaw) * Math.cos(ui.pitch) * dist, tp.y + 6 + Math.sin(ui.pitch) * dist, tp.z - Math.cos(ui.yaw) * Math.cos(ui.pitch) * dist); var fr = TREM.grupo.rotation.y, adiante = modo === 'cabine' ? -2 : 14; _alvo.set(tp.x + Math.sin(fr) * adiante, tp.y, tp.z + Math.cos(fr) * adiante); cam.lookAt(_alvo); cam.fov = 70; cam.updateProjectionMatrix(); return; }
     if (P && P.assistir && modo === 'morto') { var o2 = outros[P.assistir]; if (!o2 || o2.est === 'morto') { var vivos = Object.keys(outros).filter(function (q) { return outros[q].est === 'chao'; }); P.assistir = vivos.length ? +vivos[0] : 0; } if (o2) { cam.position.lerp(new THREE.Vector3(o2.x - Math.sin(o2.ry) * 4, o2.y + 2.4, o2.z - Math.cos(o2.ry) * 4), k); _alvo.set(o2.x, o2.y + 1.4, o2.z); cam.lookAt(_alvo); } return; }
     var ar = e.est === 'ar' || e.est === 'para', mira = miraAtual(), escopo = ui.ads && (mira === '4x' || mira === '8x');
     var fovAlvo = ui.ads ? (mira === '8x' ? 9 : mira === '4x' ? 18 : mira === '2x' ? 34 : 46) : (ar ? 75 : 70);
@@ -687,7 +711,7 @@
     Object.keys(gelos).forEach(function (k) { var g = gelos[k]; if (g.morrer !== undefined) { g.morrer -= dt; g.g.scale.y = Math.max(0.01, g.morrer / 0.4); if (g.morrer <= 0) { cena.remove(g.g); delete gelos[k]; } } else if (g.g.scale.y < 1) g.g.scale.y = Math.min(1, g.g.scale.y + dt * 6); });
     if (P) {
       if (P.zona) { ZONA.atualizar(P.zona[0], P.zona[1], P.zona[2], dt); var fora = Math.hypot(eu.x - P.zona[0], eu.z - P.zona[1]) > P.zona[2]; $('tJogo').style.boxShadow = fora && eu.est === 'chao' ? 'inset 0 0 80px rgba(60,140,255,.7)' : ''; if (!$('aviso').dataset.fixo) $('aviso').textContent = P.zona[6] < 0 ? '' : (P.zona[7] ? 'Zona fechando: ' : 'A zona segura encolhe em ') + fmt(P.zona[8]); }
-      atualizarItens(dt); atualizarDrops(dt); marcas();
+      atualizarItens(dt); atualizarDrops(dt); marcas(); pegadas();
       // tiro segurando
       if (ui.tiro && eu.est === 'chao') { grudar(dt); atirar(agora); }
       ui.recuo = Math.max(0, ui.recuo - dt * 2.2);
@@ -704,7 +728,7 @@
     camera(dt);
     renderer.render(cena, cam);
   }
-  var buzT = 2; function buzina(dt, perto) { if (!perto) return; buzT -= dt; if (buzT <= 0) { buzT = 7 + Math.random() * 5; S.buzina && S.buzina(); } }
+  var buzT = 2; function buzina(dt, perto) { if (!perto) return; buzT -= dt; if (buzT <= 0) { buzT = 7 + Math.random() * 5;  } }
   function fmt(s) { s = Math.max(0, s | 0); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
   function paraquedas(o, b, ligado) {
     if (ligado && !o.para) { o.para = BO.paraquedas([0xe8572a, 0x2f86e8, 0x9be81f, 0xb24bff][Math.floor(Math.random() * 4)]); cena.add(o.para); }
@@ -728,5 +752,5 @@
   /* ---------- começo ---------- */
   trocarIlha(777); montarLobby(); pintarPerfil(); quadro();
   document.addEventListener('pointerdown', function () { S.iniciar(); }, { once: true });
-  window.__QL = { ver: function (a, b) { modo = 'ver'; cam.position.set(a[0], a[1], a[2]); cam.lookAt(b[0], b[1], b[2]); cam.fov = 60; cam.updateProjectionMatrix(); TREM.grupo.visible = false; return I.cidades.map(function (c) { return [c.nome, Math.round(c.x), Math.round(c.z), Math.round(c.alt), !!c.fabrica]; }); }, equipar: function () { mandar({ t: 'dbg' }); }, eu: eu, inv: function () { return inv; }, ui: ui, P: function () { return P; }, outros: function () { return outros; }, mandar: mandar, modo: function () { return modo; }, fps: function () { return fpsM; }, cam: cam };
+  window.__QL = { contar: function () { return [Object.keys(itensMesh).length, Object.keys(baus).length, P ? Object.keys(P.itens).length : -1, eu.x.toFixed(0), eu.z.toFixed(0)]; }, ver: function (a, b) { modo = 'ver'; cam.position.set(a[0], a[1], a[2]); cam.lookAt(b[0], b[1], b[2]); cam.fov = 60; cam.updateProjectionMatrix(); TREM.grupo.visible = false; return I.cidades.map(function (c) { return [c.nome, Math.round(c.x), Math.round(c.z), Math.round(c.alt), !!c.fabrica]; }); }, equipar: function () { mandar({ t: 'dbg' }); }, eu: eu, inv: function () { return inv; }, ui: ui, P: function () { return P; }, outros: function () { return outros; }, mandar: mandar, modo: function () { return modo; }, fps: function () { return fpsM; }, cam: cam };
 })();

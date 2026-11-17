@@ -213,59 +213,49 @@
     return { mesh: mesh, atualizar: function (x, z, r, dt) { mesh.position.x = x; mesh.position.z = z; mesh.scale.set(Math.max(1, r), 1, Math.max(1, r)); T.zona.offset.y -= dt * 0.15; } };
   };
 
-  /* ---------- o TREM VOADOR (trem de passageiros moderno) ---------- */
+  /* ---------- o AVIÃO (desenho, bonitinho) ---------- */
   MU.trem = function (cena) {
     texturas();
-    var g = new THREE.Group(), corpo = new THREE.Group(); g.add(corpo); cena.add(g); corpo.scale.setScalar(0.7);
-    var mBranco = new THREE.MeshPhongMaterial({ color: 0xf4f6f8, shininess: 90, specular: 0x666666 }), mAzul = new THREE.MeshPhongMaterial({ color: 0x1d3fb8, shininess: 80 }), mJan = new THREE.MeshPhongMaterial({ color: 0x0c1a3a, shininess: 140, specular: 0x9fc8ff }),
-      mVerde = new THREE.MeshPhongMaterial({ color: 0x8fe05a, shininess: 40 }), mCinza = new THREE.MeshPhongMaterial({ color: 0x8a9096, shininess: 30 }), mEsc = new THREE.MeshPhongMaterial({ color: 0x2b2f36 }), mBrilho = new THREE.MeshBasicMaterial({ color: 0x7fe3ff }), mFarol = new THREE.MeshBasicMaterial({ color: 0xfff6d0 });
+    var g = new THREE.Group(), corpo = new THREE.Group(); g.add(corpo); cena.add(g);
+    var mBr = new THREE.MeshPhongMaterial({ color: 0xf7f9fc, shininess: 90, specular: 0x777777 }), mAz = new THREE.MeshPhongMaterial({ color: 0x2f6fe8, shininess: 80 }), mAm = new THREE.MeshPhongMaterial({ color: 0xffc928, shininess: 80 }),
+      mVe = new THREE.MeshPhongMaterial({ color: 0xe53935, shininess: 80 }), mJan = new THREE.MeshPhongMaterial({ color: 0x163a6b, shininess: 150, specular: 0xbfe0ff }), mEsc = new THREE.MeshPhongMaterial({ color: 0x2b2f36 });
     function c(geo, mat, x, y, z, rx, ry, rz) { var o = new THREE.Mesh(geo, mat); o.position.set(x || 0, y || 0, z || 0); o.rotation.set(rx || 0, ry || 0, rz || 0); corpo.add(o); return o; }
-    var W = 3.2, H = 3.0, L = 15, N = 5, rodas = [], frente = null;
-    function vagao(z0, loc) {
-      c(new THREE.BoxGeometry(W, H, L), mBranco, 0, 2.3, z0);
-      var teto = c(new THREE.CylinderGeometry(W / 2, W / 2, L, 20), mCinza, 0, 3.75, z0, Math.PI / 2, 0, 0); teto.scale.set(1, 1, 0.32);
-      [-1, 1].forEach(function (s) {
-        c(new THREE.BoxGeometry(0.06, 1.0, L - 0.6), mJan, s * (W / 2 + 0.02), 2.9, z0); // faixa de janelas
-        c(new THREE.BoxGeometry(0.07, 0.16, L), mAzul, s * (W / 2 + 0.03), 2.3, z0); c(new THREE.BoxGeometry(0.07, 0.22, L), mVerde, s * (W / 2 + 0.03), 1.35, z0);
-        for (var k = -1; k <= 1; k += 2) c(new THREE.BoxGeometry(0.08, 2.2, 1.0), mAzul, s * (W / 2 + 0.04), 2.0, z0 + k * (L / 2 - 1.6));
-      });
-      c(new THREE.BoxGeometry(W - 0.4, 0.5, L - 1), mEsc, 0, 0.6, z0);
-      // truques com anéis de luz (fazem o trem flutuar)
-      [-1, 1].forEach(function (k) { var zz = z0 + k * (L / 2 - 2.5); c(new THREE.BoxGeometry(W - 0.6, 0.45, 2.6), mCinza, 0, 0.35, zz); [-1, 1].forEach(function (s) { var r = c(new THREE.TorusGeometry(0.42, 0.1, 8, 18), mBrilho, s * (W / 2 - 0.35), 0.25, zz, 0, Math.PI / 2); rodas.push(r); }); });
-      if (z0 > -L) c(new THREE.CylinderGeometry(1.2, 1.2, 1.2, 14), mEsc, 0, 2.3, z0 - L / 2 - 0.4, Math.PI / 2);
-    }
-    for (var v = 0; v < N; v++) vagao(-v * (L + 0.8), v === 0);
-    // frente aerodinâmica
-    var nariz = new THREE.Group(); nariz.position.set(0, 0, L / 2); corpo.add(nariz);
-    var bico = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2), mAzul); bico.rotation.x = Math.PI / 2; bico.scale.set(W / 2, 3.2, H / 2 + 0.2); bico.position.y = 2.4; nariz.add(bico);
-    var para = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12, 0, Math.PI * 2, 0, Math.PI / 3.2), mJan); para.rotation.x = Math.PI / 2 - 0.55; para.scale.set(1.25, 1.6, 0.8); para.position.set(0, 3.25, 1.0); nariz.add(para);
-    var faixaN = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 8, 0, Math.PI * 2, Math.PI * 0.42, Math.PI * 0.08), mAzul); faixaN.rotation.x = Math.PI / 2; faixaN.scale.set(W / 2 + 0.03, 3.25, H / 2 + 0.23); faixaN.position.y = 2.4; nariz.add(faixaN);
-    [-0.9, 0.9].forEach(function (x) { var f = new THREE.Mesh(new THREE.CircleGeometry(0.22, 12), mFarol); f.position.set(x, 1.5, 2.3); f.rotation.x = -0.4; nariz.add(f); });
-    var cham = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.32, 1.4, 12), mEsc); cham.position.set(0, 4.2, -1.2); nariz.add(cham);
-    var anelC = new THREE.Mesh(new THREE.TorusGeometry(0.47, 0.08, 6, 14), new THREE.MeshPhongMaterial({ color: 0xf4c430 })); anelC.rotation.x = Math.PI / 2; anelC.position.set(0, 4.85, -1.2); nariz.add(anelC);
-    frente = new THREE.Object3D(); frente.position.set(0, 5.1, -1.2); nariz.add(frente);
-    var luz = new THREE.PointLight(0x7fe3ff, 0, 30); luz.position.set(0, -1, -20); corpo.add(luz);
-    // efeitos: fumaça saindo da frente, faíscas azuis e rastros de luz
-    var fumacas = [], mF = new THREE.SpriteMaterial({ map: T.fumaca, transparent: true, depthWrite: false, color: 0xffffff });
-    for (var f = 0; f < 60; f++) { var sp = new THREE.Sprite(mF.clone()); sp.visible = false; cena.add(sp); fumacas.push({ s: sp, t: 99, v: new THREE.Vector3() }); }
-    var faiscas = [], mFa = new THREE.SpriteMaterial({ map: T.brilho, color: 0x9ff0ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
-    for (var fa = 0; fa < 60; fa++) { var sf = new THREE.Sprite(mFa.clone()); sf.visible = false; sf.scale.setScalar(0.7); cena.add(sf); faiscas.push({ s: sf, t: 99, v: new THREE.Vector3() }); }
-    var compT = N * (L + 0.8), rastroGeo = new THREE.PlaneGeometry(0.9, 70); rastroGeo.translate(0, -35, 0); rastroGeo.rotateX(-Math.PI / 2);
-    var mR = new THREE.MeshBasicMaterial({ map: tela(16, 128, function (gg, w, h) { var gr = gg.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(140,240,255,.9)'); gr.addColorStop(1, 'rgba(140,240,255,0)'); gg.fillStyle = gr; gg.fillRect(0, 0, w, h); }), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
-    void rastroGeo; void mR;
-    var t = 0, fw = new THREE.Vector3(), rw = new THREE.Vector3();
+    // fuselagem gordinha (frente para +z)
+    var fus = c(new THREE.CylinderGeometry(2.1, 1.7, 16, 24), mBr, 0, 0, 0, Math.PI / 2); void fus;
+    c(new THREE.SphereGeometry(2.1, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2), mBr, 0, 0, 8, Math.PI / 2).scale.set(1, 1.5, 1);
+    var cauda = c(new THREE.ConeGeometry(1.7, 6, 24), mBr, 0, 0.5, -11, -Math.PI / 2); cauda.scale.set(1, 1, 0.75);
+    c(new THREE.CylinderGeometry(2.13, 2.13, 16, 24, 1, true, Math.PI * 0.42, Math.PI * 0.16), mAz, 0, 0, 0, Math.PI / 2); // faixa azul de um lado
+    c(new THREE.CylinderGeometry(2.13, 2.13, 16, 24, 1, true, Math.PI * 1.42, Math.PI * 0.16), mAz, 0, 0, 0, Math.PI / 2); // e do outro
+    // cabine do piloto e janelinhas
+    var vid = c(new THREE.SphereGeometry(1.5, 20, 12, 0, Math.PI * 2, 0, Math.PI / 3), mJan, 0, 0.9, 8.6, Math.PI / 2 - 0.75); vid.scale.set(1.15, 1, 0.8);
+    for (var k = 0; k < 7; k++) [-1, 1].forEach(function (s2) { var jn = c(new THREE.CircleGeometry(0.38, 14), mJan, s2 * 2.08, 0.55, 5 - k * 2, 0, s2 * Math.PI / 2); void jn; });
+    // asas, motores com hélice, estabilizadores
+    [-1, 1].forEach(function (s2) {
+      var asa = c(new THREE.BoxGeometry(11, 0.35, 3.4), mBr, s2 * 7, -0.6, 0.5, 0, s2 * -0.12, s2 * 0.06); void asa;
+      c(new THREE.BoxGeometry(1.2, 0.38, 3.45), mVe, s2 * 12.3, -0.25, 0.1, 0, s2 * -0.12, s2 * 0.06);
+      c(new THREE.CylinderGeometry(0.75, 0.6, 3.2, 16), mAz, s2 * 5, -1.2, 1.6, Math.PI / 2);
+      c(new THREE.SphereGeometry(0.55, 12, 8), mAm, s2 * 5, -1.2, 3.25);
+      c(new THREE.BoxGeometry(4.2, 0.25, 1.6), mBr, s2 * 2.4, 0.9, -12.2, 0, 0, s2 * 0.05);
+    });
+    var leme = c(new THREE.BoxGeometry(0.3, 3.4, 2.4), mVe, 0, 2.2, -12.4); leme.rotation.x = -0.25;
+    // hélices
+    var helices = [-1, 1].map(function (s2) { var h = new THREE.Group(); h.position.set(s2 * 5, -1.2, 3.5); corpo.add(h); for (var p = 0; p < 3; p++) { var pa = new THREE.Mesh(new THREE.BoxGeometry(0.28, 2.6, 0.08), mEsc); pa.rotation.z = p * Math.PI * 2 / 3; pa.position.y = 0; h.add(pa); } var disco = new THREE.Mesh(new THREE.CircleGeometry(1.35, 24), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.18, depthWrite: false })); h.add(disco); return h; });
+    // rodinhas (recolhidas) e luzes nas pontas das asas
+    var luzE = c(new THREE.SphereGeometry(0.22, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3030 }), -12.9, -0.2, 0.2), luzD = c(new THREE.SphereGeometry(0.22, 8, 6), new THREE.MeshBasicMaterial({ color: 0x30ff60 }), 12.9, -0.2, 0.2);
+    // rastros brancos nas pontas das asas + fumacinha dos motores
+    var rastros = [], mF = new THREE.SpriteMaterial({ map: T.fumaca, transparent: true, depthWrite: false, color: 0xffffff });
+    for (var f = 0; f < 70; f++) { var sp = new THREE.Sprite(mF.clone()); sp.visible = false; cena.add(sp); rastros.push({ s: sp, t: 99 }); }
+    var t = 0, w = new THREE.Vector3(), fontes = [luzE, luzD];
     return {
-      grupo: g, corpo: corpo, comprimento: compT,
+      grupo: g, corpo: corpo, comprimento: 26,
       atualizar: function (dt, ligado) {
-        t += dt; corpo.position.y = Math.sin(t * 1.3) * 0.4; corpo.rotation.z = Math.sin(t * 0.8) * 0.02; corpo.rotation.x = Math.sin(t * 0.6) * 0.01;
-        rodas.forEach(function (r, i) { r.rotation.x += dt * 9; r.material.color.setHSL(0.52, 1, 0.6 + Math.sin(t * 8 + i) * 0.12); });
+        t += dt; corpo.position.y = Math.sin(t * 1.1) * 0.5; corpo.rotation.z = Math.sin(t * 0.7) * 0.05; corpo.rotation.x = Math.sin(t * 0.9) * 0.02;
+        helices.forEach(function (h) { h.rotation.z += dt * 40; });
+        luzE.visible = luzD.visible = Math.sin(t * 6) > -0.3;
         if (!ligado) return;
-        frente.getWorldPosition(fw);
-        fumacas.forEach(function (f) { f.t += dt; if (f.t > 3 && Math.random() < dt * 14) { f.t = 0; f.s.position.copy(fw); f.v.set((Math.random() - 0.5) * 1.5, 3 + Math.random() * 2.5, (Math.random() - 0.5) * 1.5); f.s.visible = true; } if (f.t < 3) { f.s.position.addScaledVector(f.v, dt); var k = f.t / 3; f.s.scale.setScalar(1.5 + k * 9); f.s.material.opacity = 0.8 * (1 - k); } else f.s.visible = false; });
-        faiscas.forEach(function (f) { f.t += dt; if (f.t > 0.9 && Math.random() < dt * 12) { f.t = 0; rodas[(Math.random() * rodas.length) | 0].getWorldPosition(rw); f.s.position.copy(rw); f.v.set((Math.random() - 0.5) * 3, -2 - Math.random() * 3, (Math.random() - 0.5) * 3); f.s.visible = true; } if (f.t < 0.9) { f.s.position.addScaledVector(f.v, dt); f.s.material.opacity = 1 - f.t / 0.9; } else f.s.visible = false; });
-        luz.intensity = 1.2;
+        rastros.forEach(function (r, i) { r.t += dt; if (r.t > 2.2 && Math.random() < dt * 20) { r.t = 0; fontes[i % 2].getWorldPosition(w); r.s.position.copy(w); r.s.visible = true; } if (r.t < 2.2) { var k2 = r.t / 2.2; r.s.scale.setScalar(0.8 + k2 * 2.5); r.s.material.opacity = 0.75 * (1 - k2); } else r.s.visible = false; });
       },
-      esconderEfeitos: function () { fumacas.forEach(function (f) { f.s.visible = false; f.t = 99; }); faiscas.forEach(function (f) { f.s.visible = false; f.t = 99; }); }
+      esconderEfeitos: function () { rastros.forEach(function (r) { r.s.visible = false; r.t = 99; }); }
     };
   };
 

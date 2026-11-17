@@ -173,7 +173,7 @@ function atirar(p, j, o, d, arma) {
     const h = G.acertaCorpo(o, d, x, x.ag); if (h && h.t < tAlvo) { tAlvo = h.t; alvo = x; cab = h.cabeca; }
   }
   // parede de gelo levou o tiro
-  if (!alvo) gelos.forEach(g => { if (g._hit) { g.hp -= w.dano; if (g.hp <= 0) quebrarGelo(p, g); } g._hit = false; }); else gelos.forEach(g => { g._hit = false; });
+  if (!alvo) gelos.forEach(g => { if (g._hit) { g.hp -= w.dano * (w.chumbos ? 0.6 : 1); if (g.hp <= 0) quebrarGelo(p, g); else ev(p, 'geloDano', { id: g.id, hp: Math.round(g.hp) }); } g._hit = false; }); else gelos.forEach(g => { g._hit = false; });
   let v = 0;
   if (alvo) { const queda = tAlvo > w.alc * 0.5 ? 1 - 0.4 * (tAlvo - w.alc * 0.5) / (w.alc * 0.5) : 1; v = dano(p, alvo, w.dano * queda, cab, j, arma); }
   return { t: Math.min(tAlvo, w.alc), alvo, cab, v };
@@ -207,7 +207,7 @@ function dropNoChao(p, d) {
 function quebrarGelo(p, g) { p.gelos.delete(g.id); ev(p, 'gelo-', { id: g.id }); }
 function porGelo(p, j, ry) {
   if (j.gelos <= 0 || j.est !== 'chao') return;
-  const x = j.x + Math.sin(ry) * 1.7, z = j.z + Math.cos(ry) * 1.7, y = G.altura(p.I, x, z);
+  const x = j.x + Math.sin(ry) * 2.3, z = j.z + Math.cos(ry) * 2.3, y = G.altura(p.I, x, z);
   const g = { id: nGelo++, x, y: Math.max(y, j.y - 0.5), z, ry: ry, hp: R.GELO_VIDA, ate: p.tempo + R.GELO_TEMPO };
   j.gelos--; p.gelos.set(g.id, g); ev(p, 'gelo+', { g: { id: g.id, x: +x.toFixed(2), y: +g.y.toFixed(2), z: +z.toFixed(2), ry: +ry.toFixed(3) }, por: j.id });
 }

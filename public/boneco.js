@@ -94,7 +94,7 @@
     o.prancha.visible = est === 'ar'; o.arma.visible = est === 'chao' || est === 'cabine' || est === 'morto';
     if (est === 'ar') {
       cRx = 0; cRz = 0; hY = 0.85; tx = 0.25; bE = [-0.4, 0, 1.0 + Math.sin(t * 5) * 0.08]; bD = [0.2, 0, -0.9 - Math.sin(t * 5.3) * 0.08]; cE = -0.4; cD = -0.3; pE = -0.55; pD = 0.35; jE = 0.8; jD = 0.5; cab = 0.1;
-      o.prancha.position.set(0, 0.04, 0); o.prancha.rotation.set(0, Math.PI / 2, Math.sin(t * 3) * 0.06); o.fogo.scale.y = 0.8 + Math.random() * 0.5; ty = -1.2;
+      o.prancha.position.set(0, 0.04, 0); o.prancha.rotation.set(0, 0, Math.sin(t * 3) * 0.06); o.fogo.scale.y = 0.8 + Math.random() * 0.5; ty = -1.2;
     } else if (est === 'para') {
       bE = [0.1, 0, 2.6]; bD = [0.1, 0, -2.6]; cE = -0.6; cD = -0.6; pE = Math.sin(t * 2) * 0.2; pD = -Math.sin(t * 2) * 0.2; jE = 0.3; jD = 0.4; cab = 0.15;
     } else if (est === 'morto') {
