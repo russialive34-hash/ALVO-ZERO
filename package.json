@@ -1,10 +1,10 @@
 {
-  "name": "alvo-zero",
+  "name": "queda-livre",
   "version": "0.1.0",
-  "description": "ALVO ZERO: FPS online no navegador e celular, com salas, times, bots e headshot",
+  "description": "QUEDA LIVRE: battle royale online no navegador. Pule do trem voador, pegue loot, use parede de gelo e seja o campeão.",
   "private": true,
   "main": "server/server.js",
-  "scripts": { "start": "node server/server.js", "test": "node test/servidor.test.js && node test/drops.test.js" },
+  "scripts": { "start": "node server/server.js", "test": "node test/servidor.test.js" },
   "dependencies": { "ws": "^8.18.0" },
   "engines": { "node": ">=18" }
 }

@@ -1,261 +1,271 @@
-/* ALVO ZERO — regras, armas, mapas e física (iguais no servidor e no navegador). */
-(function (raiz, fab) { if (typeof module === 'object' && module.exports) module.exports = fab(); else raiz.REGRAS = fab(); })(this, function () {
+/* QUEDA LIVRE — regras compartilhadas: ilha, cidades, casas, colisão, armas, itens, zona e tiros. */
+(function (raiz) {
   'use strict';
-  var NOME = 'ALVO ZERO';
   var R = {
-    MAX_SALA: 20, MAX_TIME: 10, TICK: 30, ENVIO: 20,
-    VEL: 5.6, VEL_AGACHADO: 2.6, VEL_MIRA: 3.4, PULO: 6.8, GRAV: 18,
-    RAIO: 0.35, ALTURA: 1.75, ALTURA_AGACHADO: 1.2, OLHO: 1.6, OLHO_AGACHADO: 1.12, DEGRAU: 0.5,
-    VIDA: 100, RENASCER: 3, PROTECAO: 2
+    MEIO: 230,           // a ilha vai de -MEIO a +MEIO
+    AGUA: 0,
+    ANDA: 5.6, AGACHA: 2.4, PULO: 6.2, GRAV: 20,
+    QUEDA: 30, MERGULHO: 52, PLANA: 16, PARA_V: 5.5, PARA_H: 9.5, ABRE_PARA: 60,
+    TREM_ALT: 210, TREM_VEL: 30,
+    VIDA: 200, MAX_JOG: 24,
+    ESPERA: 30, GELO_VIDA: 400, GELO_TEMPO: 25
   };
-  // armas (nomes próprios do jogo)
-  var ARMAS = {
-    ar9:    { nome: 'AUG A3', tipo: 'fuzil',     slot: 1, dano: 30, cabeca: 2.6, cadencia: 0.1,  pente: 30, reserva: 120, recarga: 2.1, alcance: 120, disp: 0.012, dispAnda: 0.035, recuo: 0.018, auto: true,  zoom: 2, holo: true },
-    b3:     { nome: 'B-3 Touro',     tipo: 'fuzil',     slot: 1, dano: 29, cabeca: 2.6, cadencia: 0.095, pente: 30, reserva: 120, recarga: 2.4, alcance: 120, disp: 0.011, dispAnda: 0.034, recuo: 0.016, auto: true,  zoom: 1.5, mira15: true },
-    vx45:   { nome: 'VX-45 Vespa',   tipo: 'smg',       slot: 1, dano: 21, cabeca: 2.2, cadencia: 0.068, pente: 35, reserva: 140, recarga: 1.8, alcance: 70,  disp: 0.02,  dispAnda: 0.03,  recuo: 0.012, auto: true,  zoom: 1.2 },
-    l7:     { nome: 'L-7 Longa',     tipo: 'sniper',    slot: 1, dano: 105, cabeca: 2,  cadencia: 1.25, pente: 5,  reserva: 25,  recarga: 2.8, alcance: 250, disp: 0.12,  dispAnda: 0.2,   recuo: 0.07,  auto: false, zoom: 4, luneta: true, dispMira: 0.0005 },
-    t12:    { nome: 'T-12 Trovão',   tipo: 'escopeta',  slot: 1, dano: 15, cabeca: 1.6, cadencia: 0.85, pente: 7,  reserva: 28,  recarga: 2.6, alcance: 30,  disp: 0.07,  dispAnda: 0.09,  recuo: 0.06,  auto: false, zoom: 1.15, chumbos: 9 },
-    vb:     { nome: 'Vermilion Bird', tipo: 'sniper', slot: 1, dano: 125, cabeca: 2.2, cadencia: 1.05, pente: 7, reserva: 35, recarga: 2.5, alcance: 280, disp: 0.11, dispAnda: 0.18, recuo: 0.06, auto: false, zoom: 5, luneta: true, dispMira: 0.0003, preco: 20000, raridade: 'LENDÁRIA', desc: 'Sniper lendária com asas de fênix. Um tiro no peito derruba; na cabeça, nem se fala.' },
-    arara:  { nome: 'Arara SR', tipo: 'sniper', slot: 1, dano: 115, cabeca: 2.2, cadencia: 1.1, pente: 6, reserva: 30, recarga: 2.6, alcance: 260, disp: 0.11, dispAnda: 0.18, recuo: 0.065, auto: false, zoom: 5, luneta: true, dispMira: 0.0004, preco: 15000, raridade: 'ÉPICA', desc: 'Sniper de ferrolho nas cores da arara: branca, vermelha, amarela e azul. Luneta 5x.' },
-    p9:     { nome: 'P-9 Cobra',     tipo: 'pistola',   slot: 2, dano: 25, cabeca: 2.4, cadencia: 0.17, pente: 12, reserva: 48,  recarga: 1.4, alcance: 60,  disp: 0.014, dispAnda: 0.03,  recuo: 0.025, auto: false, zoom: 1.2 },
-    faca:   { nome: 'Faca Tática',   tipo: 'faca',      slot: 3, dano: 55, cabeca: 1.5, cadencia: 0.5,  pente: 0,  reserva: 0,   recarga: 0,   alcance: 2,   disp: 0, dispAnda: 0, recuo: 0, auto: false, zoom: 1 },
-    gr:     { nome: 'Granada HE',    tipo: 'granada',   slot: 4, dano: 110, cabeca: 1,  cadencia: 1,    pente: 1,  reserva: 0,   recarga: 0,   alcance: 0,   disp: 0, dispAnda: 0, recuo: 0, auto: false, zoom: 1, raio: 6, pavio: 2.2 }
-  };
-  var PRIMARIAS = ['ar9', 'vx45', 't12', 'b3', 'l7', 'arara', 'vb'];
-  // loja: armas à venda (preço em moedas; 0 = já vem com a conta)
-  // coletes: reduzem o dano no corpo (headshot continua dano cheio)
-  var COLETES = {
-    colete1: { nome: 'Colete Leve', categoria: 'colete', tipo: 'colete', protecao: 0.15, preco: 3000, raridade: 'COMUM', desc: 'Colete de tecido balístico, leve e discreto. Reduz 15% do dano no corpo.' },
-    colete2: { nome: 'Colete Tático', categoria: 'colete', tipo: 'colete', protecao: 0.25, preco: 8000, raridade: 'RARA', desc: 'Porta-placas com placas de cerâmica. Reduz 25% do dano no corpo.' },
-    colete3: { nome: 'Colete Premium', categoria: 'colete', tipo: 'colete', protecao: 0.35, preco: 15000, raridade: 'ÉPICA', desc: 'Blindagem pesada com ombreiras. Reduz 35% do dano no corpo.' }
-  };
-  // personagens à venda (aparecem para todos, nos dois times)
-  var SKINS = {
-    scifi: { nome: 'Guerreira Sci-Fi', categoria: 'personagem', tipo: 'personagem', preco: 12000, raridade: 'ÉPICA', desc: 'Soldada do futuro com máscara tática e equipamento leve. Todo mundo vê você com ela na partida, nos dois times.' }
-  };
-  // itens com tempo (bônus): duram alguns dias depois de comprados
-  var ITENS = {
-    xp2:      { nome: 'EXP em Dobro', categoria: 'item', tipo: 'item', dias: 3, efeito: 'xp', valor: 2, preco: 2500, raridade: 'RARA', icone: 'EXP x2', cor: '#d93a2b', desc: 'Toda a experiência das partidas vale o dobro por 3 dias.' },
-    moedas50: { nome: 'Moedas +50%', categoria: 'item', tipo: 'item', dias: 3, efeito: 'moedas', valor: 1.5, preco: 2000, raridade: 'RARA', icone: '+50%', cor: '#d9a514', desc: 'Ganhe 50% a mais de moedas no fim de cada partida por 3 dias.' },
-    troca15:  { nome: 'Troca Rápida 15%', categoria: 'item', tipo: 'item', dias: 7, efeito: 'troca', valor: 0.85, preco: 1500, raridade: 'COMUM', icone: 'QUICK', cor: '#1f8a6e', desc: 'Troca de arma 15% mais rápida por 7 dias.' },
-    hollow:   { nome: 'Munição Hollow Point', categoria: 'item', tipo: 'item', dias: 3, efeito: 'precisao', valor: 0.9, preco: 3000, raridade: 'ÉPICA', icone: 'HP', cor: '#3b6fd9', desc: 'Balas mais estáveis: 10% menos espalhamento por 3 dias.' }
-  };
-  function variante(base, id, nome, skin, preco, raridade, desc) { ARMAS[id] = Object.assign({}, ARMAS[base], { nome: nome, base: base, skin: skin, preco: preco, raridade: raridade, desc: desc }); PRIMARIAS.push(id); }
-  variante('vx45', 'vx45_cupido', 'VX-45 Cupido', 'cupido', 7000, 'RARA', 'Coleção Cupido: rosa e branca com corações. Mesmos atributos da VX-45.');
-  variante('vx45', 'vx45_neon', 'VX-45 Neon', 'neon', 7500, 'RARA', 'Coleção Neon: preta com faixas que brilham. Mesmos atributos da VX-45.');
-  variante('b3', 'b3_punk', 'B-3 Punk Wave', 'punk', 14000, 'ÉPICA', 'Coleção Punk Wave: grafite colorido. Mesmos atributos do B-3 Touro.');
-  variante('l7', 'l7_neon', 'L-7 Neon', 'neon', 16000, 'ÉPICA', 'Coleção Neon: sniper preta com faixas ciano e rosa. Mesmos atributos da L-7.');
-  variante('t12', 't12_brasa', 'T-12 Brasa', 'brasa', 11000, 'RARA', 'Coleção Brasa: laranja e preta com chamas. Mesmos atributos da T-12.');
-  // kits: vários itens juntos com desconto
-  var KITS = {
-    kit_inicio: { nome: 'Kit Iniciante', categoria: 'kit', tipo: 'kit', itens: ['vx45', 'colete1', 'xp2'], preco: 6500, raridade: 'COMUM', desc: 'VX-45 Vespa + Colete Leve + EXP em Dobro (3 dias). Economize 2.500.' },
-    kit_neon: { nome: 'Kit Neon', categoria: 'kit', tipo: 'kit', itens: ['vx45_neon', 'l7_neon', 'hollow'], preco: 21000, raridade: 'ÉPICA', desc: 'VX-45 Neon + L-7 Neon + Munição Hollow Point (3 dias). Economize 5.500.' },
-    kit_punk: { nome: 'Kit Punk Wave', categoria: 'kit', tipo: 'kit', itens: ['b3_punk', 'colete2', 'moedas50'], preco: 19000, raridade: 'ÉPICA', desc: 'B-3 Punk Wave + Colete Tático + Moedas +50% (3 dias). Economize 5.000.' },
-    kit_cupido: { nome: 'Kit Cupido', categoria: 'kit', tipo: 'kit', itens: ['vx45_cupido', 'troca15', 'xp2'], preco: 9000, raridade: 'RARA', desc: 'VX-45 Cupido + Troca Rápida (7 dias) + EXP em Dobro (3 dias). Economize 3.000.' }
-  };
-  function item(id) { return ARMAS[id] || COLETES[id] || SKINS[id] || ITENS[id] || KITS[id] || null; }
-  function itemAtivo(perfil, id) { return !!(perfil && perfil.itens && perfil.itens[id] > Date.now()); }
-  var LOJA = ['ar9', 'vx45', 't12', 'b3', 'l7', 'arara', 'vb', 'colete1', 'colete2', 'colete3', 'scifi', 'xp2', 'moedas50', 'troca15', 'hollow', 'vx45_cupido', 'vx45_neon', 'b3_punk', 'l7_neon', 't12_brasa', 'kit_inicio', 'kit_cupido', 'kit_punk', 'kit_neon'];
-  ARMAS.vx45.preco = 4000; ARMAS.vx45.raridade = 'COMUM'; ARMAS.vx45.desc = 'Submetralhadora leve e rápida. Ótima de perto, cai o dano de longe.';
-  ARMAS.t12.preco = 6000; ARMAS.t12.raridade = 'COMUM'; ARMAS.t12.desc = 'Escopeta de 9 chumbos. Um tiro de perto resolve.';
-  ARMAS.b3.preco = 9000; ARMAS.b3.raridade = 'RARA'; ARMAS.b3.desc = 'Fuzil com mira 1.5x. Um pouco mais preciso que o AUG.';
-  ARMAS.l7.preco = 10000; ARMAS.l7.raridade = 'RARA'; ARMAS.l7.desc = 'Sniper de ferrolho com luneta. No modo Só Sniper ela é de graça.';
-  ARMAS.ar9.preco = 0; ARMAS.ar9.raridade = 'PADRÃO'; ARMAS.ar9.desc = 'Fuzil bullpup confiável. Rajada rápida e controle fácil.';
-  // moedas ganhas no fim da partida
-  function moedasPartida(kills, hs, venceu) { return 30 + kills * 6 + hs * 4 + (venceu ? 60 : 0); }
-  var MODOS = { time: 'Modo Tiro (todas as armas)', todos: 'Todos contra todos', bomba: 'Missão Bomba', elim: 'Eliminação (sem renascer)', sniper: 'Só Sniper', faca: 'Só Faca', pistola: 'Só Pistola' };
-  // modos por rodada (sem renascer): quem ganhar RODADAS rodadas vence
-  var RODADA = { bomba: { vencer: 5, tempo: 120 }, elim: { vencer: 5, tempo: 100 } };
-  var BOMBA = { plantar: 3, desarmar: 5, explode: 35, raioLocal: 2.6, raioDesarmar: 1.6, raioExplosao: 9 };
-  function porRodada(modo) { return !!RODADA[modo]; }
-  function contaKills(modo) { return modo === 'time' || modo === 'sniper' || modo === 'faca' || modo === 'pistola'; } // placar = kills do time
-  /* ---------- patentes no estilo Point Blank: 55 níveis, cada um com sua insígnia ---------- */
-  // [nome, quantos níveis (I, II, III...), tipo da insígnia]
-  var GRUPOS = [
-    ['Novato', 1, 'novato'], ['Recruta', 1, 'recruta'], ['Soldado', 3, 'v1'], ['Cabo', 3, 'v2'],
-    ['3º Sargento', 3, 'v3'], ['2º Sargento', 3, 'v4'], ['1º Sargento', 4, 'v5'], ['Subtenente', 4, 'losango'],
-    ['2º Tenente', 4, 'b1'], ['1º Tenente', 4, 'b2'], ['Capitão', 5, 'b3'], ['Major', 5, 'folha'],
-    ['Tenente-Coronel', 5, 'folha2'], ['Coronel', 5, 'aguia'],
-    ['General de Brigada', 1, 'e1'], ['General de Divisão', 1, 'e2'], ['General de Exército', 1, 'e3'], ['Marechal', 1, 'e4'], ['Herói de Guerra', 1, 'heroi']
-  ];
-  var ROMANO = ['', 'I', 'II', 'III', 'IV', 'V'];
-  var PATENTES = [], PAT_INFO = [];
-  GRUPOS.forEach(function (g) { for (var i = 1; i <= g[1]; i++) { PATENTES.push(g[1] > 1 ? g[0] + ' ' + ROMANO[i] : g[0]); PAT_INFO.push({ tipo: g[2], nivel: g[1] > 1 ? i : 0 }); } });
-  function xpPara(n) { return n <= 0 ? 0 : Math.round(40 * Math.pow(n, 1.9) / 10) * 10; }
-  function patente(xp) { xp = xp || 0; var n = 0; while (n < PATENTES.length - 1 && xp >= xpPara(n + 1)) n++; return { n: n, nome: PATENTES[n], prox: xpPara(Math.min(PATENTES.length - 1, n + 1)), base: xpPara(n), max: n === PATENTES.length - 1 }; }
-  // insígnia em SVG (escudo + símbolo); funciona no navegador e no servidor
-  function insignia(n) {
-    n = Math.max(0, Math.min(PATENTES.length - 1, n | 0)); var p = PAT_INFO[n], t = p.tipo, d = '';
-    var fundo = t === 'novato' || t === 'recruta' ? ['#7d8790', '#3c434a'] : t[0] === 'v' || t === 'losango' ? ['#4f6b3a', '#24331a'] : t[0] === 'b' || t.indexOf('folha') === 0 || t === 'aguia' ? ['#2f5f9e', '#14284a'] : t === 'heroi' ? ['#2a2a2a', '#000'] : ['#a3241c', '#4a0b07'];
-    var ouro = '#ffd257', prata = '#e9eef2', cor = t.indexOf('folha2') === 0 || t === 'b1' || t === 'b2' ? prata : ouro;
-    function chev(y) { return '<path d="M6 ' + (y + 3) + 'L12 ' + y + 'L18 ' + (y + 3) + '" stroke="' + ouro + '" stroke-width="2.2" fill="none" stroke-linejoin="round"/>'; }
-    function estrela(x, y, r) { var pts = []; for (var i = 0; i < 10; i++) { var a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; pts.push((x + Math.cos(a) * rr).toFixed(2) + ',' + (y + Math.sin(a) * rr).toFixed(2)); } return '<polygon points="' + pts.join(' ') + '" fill="' + ouro + '"/>'; }
-    if (t === 'novato') d = '<circle cx="12" cy="11" r="2.4" fill="' + prata + '"/>';
-    else if (t === 'recruta') d = '<path d="M7 12L12 9L17 12" stroke="' + prata + '" stroke-width="2" fill="none"/>';
-    else if (t[0] === 'v') { var k = +t[1], q = Math.min(k, 3); for (var i = 0; i < q; i++) d += chev(5.5 + i * 3.4); if (k > 3) { d += '<path d="M6.5 ' + (16.3) + 'Q12 19 17.5 16.3" stroke="' + ouro + '" stroke-width="1.8" fill="none"/>'; } if (k > 4) d += '<path d="M7.5 18.6Q12 21 16.5 18.6" stroke="' + ouro + '" stroke-width="1.6" fill="none"/>'; }
-    else if (t === 'losango') d = '<path d="M12 5L16.5 11L12 17L7.5 11Z" fill="' + ouro + '"/><path d="M12 8L14 11L12 14L10 11Z" fill="#24331a"/>';
-    else if (t[0] === 'b') { var nb = +t[1], w = 3, gap = 1.6, tot = nb * w + (nb - 1) * gap; for (var j = 0; j < nb; j++) d += '<rect x="' + (12 - tot / 2 + j * (w + gap)).toFixed(2) + '" y="6" width="' + w + '" height="10" rx="0.6" fill="' + cor + '"/>'; }
-    else if (t.indexOf('folha') === 0) d = '<path d="M12 4.5C16 7 17 11 12 17C7 11 8 7 12 4.5Z" fill="' + cor + '"/><path d="M12 6V18" stroke="rgba(0,0,0,.35)" stroke-width="0.8"/>';
-    else if (t === 'aguia') d = '<path d="M3.5 8.5C6 9 8.5 10 12 12.5C15.5 10 18 9 20.5 8.5C19 11.5 16.5 13.5 13.5 14L12 17L10.5 14C7.5 13.5 5 11.5 3.5 8.5Z" fill="' + prata + '"/><circle cx="12" cy="10" r="1.6" fill="' + prata + '"/>';
-    else if (t[0] === 'e') { var ne = +t[1], r = ne > 2 ? 2.4 : 2.9, esp = ne > 2 ? 5 : 6; for (var m = 0; m < ne; m++) d += estrela(12 - (ne - 1) * esp / 2 + m * esp, 11, r); }
-    else if (t === 'heroi') d = estrela(12, 10.5, 5) + '<path d="M5 13Q6 19 12 20M19 13Q18 19 12 20" stroke="' + ouro + '" stroke-width="1.3" fill="none"/>';
-    var pips = ''; for (var z = 0; z < p.nivel; z++) pips += '<circle cx="' + (12 - (p.nivel - 1) * 1.6 + z * 3.2).toFixed(2) + '" cy="19.6" r="0.95" fill="' + ouro + '"/>';
-    return '<svg viewBox="0 0 24 24" class="ins"><defs><linearGradient id="gi' + n + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + fundo[0] + '"/><stop offset="1" stop-color="' + fundo[1] + '"/></linearGradient></defs>' +
-      '<path d="M12 1.2L21.5 4.8V11.6C21.5 17 17.4 21.2 12 22.9C6.6 21.2 2.5 17 2.5 11.6V4.8Z" fill="url(#gi' + n + ')" stroke="' + (t === 'heroi' ? ouro : 'rgba(255,255,255,.55)') + '" stroke-width="0.9"/>' + d + pips + '</svg>';
-  }
 
-  /* ---------- mapas: caixas [x, y(base), z, largura, altura, profundidade, material] ---------- */
-  function espelhar(lista) { var o = []; lista.forEach(function (b) { o.push(b); if (b[0] !== 0) o.push([-b[0], b[1], b[2], b[3], b[4], b[5], b[6]]); }); return o; }
-  // Mapa 1: Estação Concreto — prédio de concreto com pilares, claraboias, mezanino e escadas
-  // ============ BIBLIOTECA (único mapa) ============
-  // Planta: bases nas pontas (andar de cima) → passagem → corredores laterais no alto com corrimão olhando o salão.
-  // Uma ponte atravessa o meio do salão (sobre pilares). Escadaria de tapete vermelho ao norte e escadas de tapete azul
-  // nas laterais descem para o salão rebaixado, cheio de estantes. Teto de vidro com vigas de madeira.
-  function biblioteca() {
-    var W = 29, D = 16, H = 10, N = 3.6, HX = 13, HZ = 13, cx = [];
-    cx.push([0, -1, 0, W * 2, 1, D * 2, 'ladrilho']);
-    cx.push([0, 0, -D - 0.5, W * 2 + 2, H, 1, 'reboco'], [0, 0, D + 0.5, W * 2 + 2, H, 1, 'reboco'], [-W - 0.5, 0, 0, 1, H, D * 2, 'reboco'], [W + 0.5, 0, 0, 1, H, D * 2, 'reboco']);
-    cx.push([0, H, 0, W * 2 + 2, 0.6, D * 2 + 2, 'teto']);
-    // andar de cima maciço: faixas norte e sul (a lateral delas vira parede do salão)
-    cx.push([0, 0, -(HZ + D) / 2, 32, N, D - HZ, 'reboco'], [0, 0, (HZ + D) / 2, 32, N, D - HZ, 'reboco']);
-    // ponte no meio do salão, com corrimão dos dois lados, sobre dois pilares
-    cx.push([0, N - 0.4, 0, HX * 2, 0.4, 3, 'madeirab'], [0, N, -1.55, HX * 2, 1, 0.12, 'corrimao'], [0, N, 1.55, HX * 2, 1, 0.12, 'corrimao']);
-    // escadaria grande (tapete vermelho) do salão até o balcão norte
-    for (var k = 0; k < 8; k++) cx.push([0, 0, -8.5 - k * 0.6, 4, 0.45 * (k + 1), 0.6, 'degrau']);
-    // balcões norte e sul: corrimão na beira do salão
-    cx.push([-7.5, N, -HZ - 0.05, 11, 1, 0.12, 'corrimao'], [7.5, N, -HZ - 0.05, 11, 1, 0.12, 'corrimao'], [0, N, HZ + 0.05, HX * 2, 1, 0.12, 'corrimao']);
-    // salão (centro)
-    cx.push([0, 0, 5.2, 1.6, 0.8, 2.6, 'mesa'], [0, 0, -5.4, 2.6, 1.2, 0.7, 'estante']);
-    var lado = [
-      // corredor lateral (no alto) e passagem para a base
-      [-(HX + 16) / 2, 0, 0, 16 - HX, N, HZ * 2, 'reboco'], [-17.5, 0, 0, 3, N, 6, 'reboco'], [-24, 0, 0, 10, N, 14, 'reboco'],
-      // "fora do mapa": paredes cheias de livros em volta dos corredores e da base
-      [-17.5, 0, -9.5, 3, H, 13, 'estante'], [-17.5, 0, 9.5, 3, H, 13, 'estante'], [-24, 0, -11.5, 10, H, 9, 'reboco'], [-24, 0, 11.5, 10, H, 9, 'reboco'],
-      // corrimão do corredor lateral (vãos na ponte e na escada azul)
-      [-HX - 0.05, N, -7.25, 0.12, 1, 11.5, 'corrimao'], [-HX - 0.05, N, 4, 0.12, 1, 5, 'corrimao'], [-HX - 0.05, N, 11.25, 0.12, 1, 3.5, 'corrimao'],
-      // pilares da ponte
-      [-4.5, 0, 0, 1, N - 0.4, 1.6, 'coluna'],
-      // escada lateral (tapete azul): sobe do salão até o corredor
-      // salão norte: estantes altas e baixas, mesas de leitura
-      [-8, 0, -9.2, 3.2, 2.2, 0.7, 'estante'], [-8, 0, -5.6, 3.2, 1.2, 0.7, 'estante'], [-4.6, 0, -7.4, 0.7, 2.2, 2.4, 'estante'], [-10.8, 0, -3.6, 1.4, 0.8, 2.6, 'mesa'],
-      [-8, 0, -12.7, 6, 2.6, 0.5, 'estante'], [-12.7, 0, -8.5, 0.5, 2.6, 7, 'estante'],
-      // salão sul: fileiras de estantes no sentido do comprimento
-      [-2.6, 0, 9.4, 0.7, 2.2, 3.6, 'estante'], [-6.4, 0, 10.6, 0.7, 2.2, 3.6, 'estante'], [-4.5, 0, 4.4, 2.4, 1.2, 0.7, 'estante'], [-10, 0, 3.4, 1.4, 0.8, 2.4, 'mesa'],
-      [-8, 0, 12.7, 5, 2.6, 0.5, 'estante'],
-      // cobertura no corredor de cima e na base
-      [-15.45, N, -9.5, 0.5, 1.3, 2.2, 'estante'], [-15.45, N, 11.8, 0.5, 1.3, 2, 'estante'], [-21, N, -4.5, 1.4, 1.4, 1.4, 'lona'], [-21, N, 4.5, 1.4, 1.4, 1.4, 'lona'], [-27.6, N, 0, 0.6, 2.4, 4, 'estante'],
-      [-10, N, -14.6, 1.4, 0.8, 2.2, 'mesa'], [-10, N, 14.6, 1.4, 0.8, 2.2, 'mesa']
-    ];
-    for (var i = 0; i < 8; i++) lado.push([-8.5 - i * 0.6, 0, 8, 0.6, 0.45 * (i + 1), 3, 'degrauazul']);
-    cx = cx.concat(espelhar(lado));
-    var nasc = { r: [[-26, -5], [-26, -2.5], [-26, 0], [-26, 2.5], [-26, 5], [-23.5, -3], [-23.5, 3], [-23.5, 0]], b: [] };
-    nasc.b = nasc.r.map(function (p) { return [-p[0], p[1]]; });
-    return { id: 'biblioteca', nome: 'Biblioteca', caixas: cx.filter(function (b) { return b[3] > 0.02; }), nasc: nasc, lim: [W, D], ceu: false, luz: 0xffe6c4, nevoa: 0x8a7a66, fundo: 0x6e6152, claraboia: true, chao: N,
-      locais: { A: [6, -10.5], B: [9, 11] } };
-  }
-  // ============ LUXVILLE ============
-  // Palácio-museu lilás e dourado: salão central rebaixado com escadarias de tapete que se cruzam, corredor em volta
-  // no alto com balaustrada branca, galerias com claraboias e painéis roxos com medalhão, estantes brancas e vitrines.
-  function luxville() {
-    var W = 28, D = 20, H = 9.5, N = 3.6, P = 5.6, cx = [];
-    var HX = 11, HZ = 8, IX = 15, IZ = 12;
-    cx.push([0, -1, 0, W * 2, 1, D * 2, 'marmore']);
-    cx.push([0, 0, -D - 0.5, W * 2 + 2, H, 1, 'painel'], [0, 0, D + 0.5, W * 2 + 2, H, 1, 'painel'], [-W - 0.5, 0, 0, 1, H, D * 2, 'painel'], [W + 0.5, 0, 0, 1, H, D * 2, 'painel']);
-    cx.push([0, H, 0, W * 2 + 2, 0.6, D * 2 + 2, 'teto']);
-    cx.push([0, 0, -(HZ + D) / 2, W * 2, N, D - HZ, 'base_lux'], [0, 0, (HZ + D) / 2, W * 2, N, D - HZ, 'base_lux']);
-    var lado = [
-      [-(HX + W) / 2, 0, 0, W - HX, N, HZ * 2, 'base_lux'],
-      [-IX, N, -7.5, 0.5, P, 9, 'painel'], [-IX, N, 7.5, 0.5, P, 9, 'painel'],
-      [-11, N, -IZ, 8, P, 0.5, 'painel'], [-11, N, IZ, 8, P, 0.5, 'painel'], [-2.5, N, -IZ, 5, P, 0.5, 'painel'], [-2.5, N, IZ, 5, P, 0.5, 'painel'],
-      [-HX - 0.1, N, -5.25, 0.2, 1, 5.5, 'balaustre'], [-HX - 0.1, N, 5.25, 0.2, 1, 5.5, 'balaustre'],
-      [-9.25, N, -HZ - 0.1, 3.5, 1, 0.2, 'balaustre'], [-2.5, N, -HZ - 0.1, 5, 1, 0.2, 'balaustre'], [-9.25, N, HZ + 0.1, 3.5, 1, 0.2, 'balaustre'], [-2.5, N, HZ + 0.1, 5, 1, 0.2, 'balaustre'],
-      [-21, N, -D + 0.25, 1.6, P, 0.5, 'painelroxo'], [-17, N, -D + 0.25, 1.6, P, 0.5, 'painelroxo'], [-9, N, -D + 0.25, 1.6, P, 0.5, 'painelroxo'], [-5, N, -D + 0.25, 1.6, P, 0.5, 'painelroxo'], [-13, N, -D + 0.25, 1.6, P, 0.5, 'painelroxo'], [-1, N, -D + 0.25, 1.6, P, 0.5, 'painelroxo'],
-      [-12, N, -16, 0.9, 1.1, 1.6, 'vitrine'], [-5, N, -14.5, 1.6, 1.1, 0.9, 'vitrine'], [-19, N, -17.5, 0.7, 1.9, 2.4, 'estantebranca'],
-      [-12, N, 16, 0.9, 1.1, 1.6, 'vitrine'], [-5, N, 14.5, 1.6, 1.1, 0.9, 'vitrine'], [-19, N, 17.5, 0.7, 1.9, 2.4, 'estantebranca'], [-8.5, N, 18.6, 2.6, 1.9, 0.6, 'estantebranca'],
-      [-21.5, N, -6.5, 0.5, P, 7, 'painel'], [-21.5, N, 6.5, 0.5, P, 7, 'painel'], [-18.2, N, -3, 1.4, 1.4, 1.4, 'lona'], [-18.2, N, 3, 1.4, 1.4, 1.4, 'lona'],
-      [-13, N, -10, 0.7, 1.2, 2.2, 'estantebranca'], [-13, N, 10, 0.7, 1.2, 2.2, 'estantebranca'],
-      [-8.5, 0, -5.2, 1.4, 1.4, 1.4, 'lona'], [-8.5, 1.4, -5.2, 1.1, 1.1, 1.1, 'lona'], [-7, 0, 5.4, 2.8, 1.4, 1.4, 'lona'], [-3.2, 0, -1.2, 0.7, 1.9, 2.4, 'estantebranca'], [-9.5, 0, 1.6, 0.9, 1.1, 1.6, 'vitrine']
-    ];
-    for (var i = 0; i < 8; i++) lado.push([-6.5 - i * 0.6 - 0.3 - 0.3, 0, 0, 0.6, 0.45 * (i + 1), 3, 'degraulux']);
-    cx = cx.concat(espelhar(lado));
-    for (var k = 0; k < 8; k++) cx.push([-6, 0, -3.5 - k * 0.6 - 0.3 + 0.3 - 0.1 - 0.3 + 0.1, 3, 0.45 * (k + 1), 0.6, 'degraulux'], [6, 0, 3.5 + k * 0.6, 3, 0.45 * (k + 1), 0.6, 'degraulux']);
-    cx.push([0, 0, 0, 1.4, 1.4, 1.4, 'lona'], [2.5, 0, -5, 0.7, 1.9, 2.4, 'estantebranca']);
-    var nasc = { r: [[-25, -7], [-25, -3.5], [-25, 0], [-25, 3.5], [-25, 7], [-24, -15], [-24, 15], [-19, 0]], b: [] };
-    nasc.b = nasc.r.map(function (p) { return [-p[0], p[1]]; });
-    return { id: 'luxville', nome: 'Luxville', caixas: cx.filter(function (b) { return b[3] > 0.02; }), nasc: nasc, lim: [W, D], ceu: false, luz: 0xfff0e0, nevoa: 0x8a8494, fundo: 0x7e7888, claraboia: true, vigas: 'branca', chao: N,
-      locais: { A: [17, -16], B: [7.5, -3] } };
-  }
-  var MAPAS = { biblioteca: biblioteca(), luxville: luxville() };
+  /* ---------- números aleatórios e ruído ---------- */
+  function rng(seed) { var s = (seed >>> 0) || 1; return function () { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return (s % 1000000) / 1000000; }; }
+  function hash(i, j, s) { var h = (i * 374761393 + j * 668265263 + s * 2147483647) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967295; }
+  function suave(t) { return t * t * (3 - 2 * t); }
+  function ruido(x, z, s) { var i = Math.floor(x), j = Math.floor(z), fx = suave(x - i), fz = suave(z - j); var a = hash(i, j, s), b = hash(i + 1, j, s), c = hash(i, j + 1, s), d = hash(i + 1, j + 1, s); return a + (b - a) * fx + (c - a) * fz + (a - b - c + d) * fx * fz; }
+  function fbm(x, z, s) { return ruido(x, z, s) * 0.55 + ruido(x * 2.1, z * 2.1, s + 1) * 0.28 + ruido(x * 4.3, z * 4.3, s + 2) * 0.17; }
 
-  /* ---------- física ---------- */
-  function sobrepoe(b, x0, y0, z0, x1, y1, z1) {
-    return x1 > b[0] - b[3] / 2 && x0 < b[0] + b[3] / 2 && y1 > b[1] && y0 < b[1] + b[4] && z1 > b[2] - b[5] / 2 && z0 < b[2] + b[5] / 2;
-  }
-  function colide(mapa, x, y, z, alt) {
-    var r = R.RAIO;
-    for (var i = 0; i < mapa.caixas.length; i++) if (sobrepoe(mapa.caixas[i], x - r, y + 0.01, z - r, x + r, y + alt, z + r)) return mapa.caixas[i];
-    return null;
-  }
-  // move o jogador com colisão por eixo e subida de degrau. p = {x,y,z,vy,noChao,agachado}
-  function mover(mapa, p, dx, dz, dt) {
-    var alt = p.agachado ? R.ALTURA_AGACHADO : R.ALTURA;
-    [['x', dx], ['z', dz]].forEach(function (e) {
-      if (!e[1]) return; var ant = p[e[0]]; p[e[0]] += e[1];
-      var b = colide(mapa, p.x, p.y, p.z, alt);
-      if (b) {
-        var topo = b[1] + b[4];
-        if (p.noChao && topo - p.y <= R.DEGRAU && !colide(mapa, p.x, topo, p.z, alt)) p.y = topo; // sobe degrau
-        else p[e[0]] = ant;
+  /* ---------- a ilha ---------- */
+  var NOMES = ['Vila Coqueiro', 'Porto Sal', 'Usina Velha', 'Mirante', 'Fazenda Sol', 'Base Aérea', 'Praia Funda', 'Vale Verde'];
+  function gerar(seed) {
+    var r = rng(seed), I = { seed: seed, cidades: [], casas: [], paredes: [], arvores: [], pedras: [], loot: [], estradas: [], caixas: [] };
+    // um lago no meio da ilha e duas ilhotas na beira
+    var la = r() * Math.PI * 2, ld = 40 + r() * 60; I.lago = { x: Math.cos(la) * ld, z: Math.sin(la) * ld, r: 16 + r() * 8 };
+    I.ilhotas = [0, 1].map(function (k) { var a = la + Math.PI * (0.6 + k * 0.8) + r() * 0.4, d = R.MEIO * (0.86 + r() * 0.08); return { x: Math.cos(a) * d, z: Math.sin(a) * d, r: 18 + r() * 10 }; });
+    // cidades espalhadas, longe umas das outras
+    for (var t = 0; t < 400 && I.cidades.length < 7; t++) {
+      var a = r() * Math.PI * 2, d = 25 + r() * 140, x = Math.cos(a) * d, z = Math.sin(a) * d;
+      if (I.cidades.some(function (c) { return Math.hypot(c.x - x, c.z - z) < 85; }) || Math.hypot(I.lago.x - x, I.lago.z - z) < I.lago.r + 42) continue;
+      I.cidades.push({ id: I.cidades.length, nome: NOMES[I.cidades.length], x: x, z: z, r: 26 + r() * 10, alt: 0 });
+    }
+    I.cidades.forEach(function (c) { c.alt = Math.max(2.5, alturaBruta(I, c.x, c.z)); });
+    // estradas ligando cada cidade à mais perto
+    I.cidades.forEach(function (c, i) { var o = I.cidades.filter(function (x, k) { return k !== i; }).sort(function (a, b) { return Math.hypot(a.x - c.x, a.z - c.z) - Math.hypot(b.x - c.x, b.z - c.z); }); [o[0], o[1]].forEach(function (p) { if (p && !I.estradas.some(function (e) { return e[0] === p.id && e[1] === c.id; })) I.estradas.push([c.id, p.id]); }); });
+    // a Usina Velha vira a fábrica
+    var usina = I.cidades.find(function (c) { return c.nome === 'Usina Velha'; });
+    I.estruturas = [];
+    if (usina) { usina.fabrica = true; usina.r = 44; usina.alt = Math.max(2.5, alturaBruta(I, usina.x, usina.z)); fabrica(I, usina); }
+    var faz = I.cidades.find(function (c) { return c.nome === 'Fazenda Sol'; });
+    if (faz) { var mx = faz.x + faz.r * 0.55, mz = faz.z - faz.r * 0.3; I.estruturas.push({ tipo: 'moinho', x: mx, z: mz, y: faz.alt }); I.paredes.push({ x: mx, z: mz, w: 6.4, d: 6.4, y0: faz.alt, y1: faz.alt + 14, tipo: 'moinho' }); faz.moinho = [mx, mz]; }
+    // casas em cada cidade (paredes com porta e janela)
+    I.cidades.forEach(function (c) {
+      if (c.fabrica) return;
+      var base = c.nome === 'Base Aérea' || c.nome === 'Usina Velha';
+      var n = base ? 5 : 6 + (r() * 4 | 0), feitas = [];
+      for (var k = 0; k < 80 && feitas.length < n; k++) {
+        var w = base ? 14 + r() * 6 : 7 + r() * 4, dd = base ? 10 + r() * 4 : 6 + r() * 3, a2 = r() * Math.PI * 2, rr = 5 + r() * (c.r - 8);
+        var hx = c.x + Math.cos(a2) * rr, hz = c.z + Math.sin(a2) * rr;
+        if (feitas.some(function (f) { return Math.abs(f.x - hx) < (f.w + w) / 2 + 3.5 && Math.abs(f.z - hz) < (f.d + dd) / 2 + 3.5; })) continue;
+        var casa = { id: I.casas.length, x: hx, z: hz, w: w, d: dd, h: base ? 5 : 3.2, cid: c.id, tipo: base ? 'galpao' : 'casa', cor: (r() * 6) | 0, y: c.alt };
+        feitas.push(casa); I.casas.push(casa); paredesDaCasa(I, casa, r);
+        if (!base && r() < 0.75) cercaDoQuintal(I, casa, r);
+      }
+      // caixas de madeira e contêineres (cobertura)
+      for (var q = 0; q < (base ? 10 : 5); q++) {
+        var cx = c.x + (r() - 0.5) * c.r * 1.6, cz = c.z + (r() - 0.5) * c.r * 1.6, cont = base && r() < 0.6;
+        var cw = cont ? 6 : 1.4, cd = cont ? 2.5 : 1.4, ch = cont ? 2.6 : 1.4;
+        if (!livre(I, cx, cz, Math.max(cw, cd) / 2 + 1, 0)) continue;
+        var cx2 = { x: cx, z: cz, w: r() < 0.5 ? cw : cd, d: 0, h: ch, y0: c.alt, tipo: cont ? 'container' : 'caixa', cor: (r() * 4) | 0 }; cx2.d = cx2.w === cw ? cd : cw;
+        I.caixas.push(cx2); I.paredes.push({ x: cx, z: cz, w: cx2.w, d: cx2.d, y0: c.alt, y1: c.alt + ch, tipo: cx2.tipo });
       }
     });
-    p.vy -= R.GRAV * dt; var ny = p.y + p.vy * dt;
-    var bate = colide(mapa, p.x, ny, p.z, alt);
-    if (bate) {
-      if (p.vy <= 0) { p.y = bate[1] + bate[4]; p.noChao = true; } else { p.y = bate[1] - alt - 0.01; }
-      p.vy = 0;
-    } else { p.y = ny; p.noChao = false; if (p.vy <= 0 && colide(mapa, p.x, ny - 0.05, p.z, alt)) p.noChao = true; }
-    if (p.y < -5) { p.y = 0; p.vy = 0; }
-    return p;
-  }
-  // raio contra caixa (slab). Retorna distância ou -1
-  function raioCaixa(o, d, b) {
-    var mn = [b[0] - b[3] / 2, b[1], b[2] - b[5] / 2], mx = [b[0] + b[3] / 2, b[1] + b[4], b[2] + b[5] / 2], t0 = -1e9, t1 = 1e9, oo = [o.x, o.y, o.z], dd = [d.x, d.y, d.z];
-    for (var i = 0; i < 3; i++) {
-      if (Math.abs(dd[i]) < 1e-9) { if (oo[i] < mn[i] || oo[i] > mx[i]) return -1; continue; }
-      var a = (mn[i] - oo[i]) / dd[i], c = (mx[i] - oo[i]) / dd[i]; if (a > c) { var t = a; a = c; c = t; }
-      if (a > t0) t0 = a; if (c < t1) t1 = c; if (t0 > t1 || t1 < 0) return -1;
+    indexar(I);
+    // coqueiros, árvores e pedras
+    for (var p = 0; p < 2600 && I.arvores.length < 420; p++) {
+      var ax = (r() * 2 - 1) * R.MEIO, az = (r() * 2 - 1) * R.MEIO, h = altura(I, ax, az);
+      if (h < 0.8) continue; if (I.cidades.some(function (c) { return Math.hypot(c.x - ax, c.z - az) < c.r - 4; }) && r() < 0.85) continue;
+      if (!livre(I, ax, az, 2, h)) continue;
+      I.arvores.push({ x: ax, z: az, y: h, tipo: h < 5 ? 'coqueiro' : (r() < 0.5 ? 'coqueiro' : 'arvore'), esc: 0.8 + r() * 0.5, rot: r() * 6.28 });
     }
-    return t0 >= 0 ? t0 : t1;
+    for (var s2 = 0; s2 < 900 && I.pedras.length < 110; s2++) {
+      var px = (r() * 2 - 1) * R.MEIO, pz = (r() * 2 - 1) * R.MEIO, ph = altura(I, px, pz);
+      if (ph < 0.5 || !livre(I, px, pz, 2.5, ph)) continue;
+      I.pedras.push({ x: px, z: pz, y: ph, r: 0.8 + r() * 1.8, rot: r() * 6 });
+    }
+    indexar(I);
+    // pontos de loot: dentro das casas e alguns pelo mapa
+    I.casas.forEach(function (c) {
+      var n = c.tipo === 'galpao' ? 5 : 3;
+      for (var i = 0; i < n; i++) { var lx = c.x + (r() - 0.5) * (c.w - 2), lz = c.z + (r() - 0.5) * (c.d - 2); if (livre(I, lx, lz, 0.4, c.y)) I.loot.push({ x: lx, z: lz, y: c.y, rico: c.tipo === 'galpao' }); }
+    });
+    if (usina) for (var u = 0; u < 300 && I.loot.filter(function (l) { return l.fab; }).length < 16; u++) { var ux = usina.x + (r() - 0.5) * (r() < 0.6 ? 36 : 70), uz = usina.z + (r() - 0.5) * (r() < 0.6 ? 18 : 50); if (livre(I, ux, uz, 0.6, usina.alt)) I.loot.push({ x: ux, z: uz, y: usina.alt, rico: r() < 0.5, fab: 1 }); }
+    for (var l = 0; l < 500 && I.loot.length < I.casas.length * 3 + 70; l++) { var ox = (r() * 2 - 1) * R.MEIO, oz = (r() * 2 - 1) * R.MEIO, oh = altura(I, ox, oz); if (oh > 0.8 && livre(I, ox, oz, 0.5, oh)) I.loot.push({ x: ox, z: oz, y: oh, rico: false }); }
+    return I;
   }
-  function raioMapa(mapa, o, d, max) {
-    var melhor = max;
-    for (var i = 0; i < mapa.caixas.length; i++) { var t = raioCaixa(o, d, mapa.caixas[i]); if (t >= 0 && t < melhor) melhor = t; }
+  // paredes da casa com porta e JANELAS ABERTAS (dá pra atirar e pular por elas)
+  function paredesDaCasa(I, c, r) {
+    var e = 0.3, PORTA = 1.6, JAN = 1.3, y0 = c.y, y1 = c.y + c.h, gal = c.tipo === 'galpao';
+    var portaLado = (r() * 4) | 0, porta2 = (portaLado + 2) % 4;
+    c.portas = []; c.janelas = [];
+    function lado(ax, az, comp, horiz, temPorta) {
+      var aberturas = [];
+      if (temPorta) aberturas.push({ m: (r() - 0.5) * (comp - PORTA - 2.4), l: gal ? 3.2 : PORTA, a: 0, b: gal ? 3.2 : 2.3, porta: 1 });
+      if (!gal) { var n = Math.max(1, Math.floor(comp / 3.6)); for (var k = 0; k < n; k++) { var m = -comp / 2 + (k + 0.5) * comp / n; if (aberturas.some(function (o) { return Math.abs(o.m - m) < (o.l + JAN) / 2 + 0.5; })) continue; if (Math.abs(m) > comp / 2 - 1) continue; aberturas.push({ m: m, l: JAN, a: 1.0, b: 2.1 }); } }
+      aberturas.sort(function (p, q) { return p.m - q.m; });
+      function peca(ini, fim, ya, yb, extra) { var t = fim - ini, mm = (ini + fim) / 2; if (t < 0.05 || yb - ya < 0.05) return; var o = horiz ? { x: ax + mm, z: az, w: t, d: e } : { x: ax, z: az + mm, w: e, d: t }; o.y0 = ya; o.y1 = yb; o.casa = c.id; if (extra) o[extra] = 1; I.paredes.push(o); }
+      var ini = -comp / 2;
+      aberturas.forEach(function (o) {
+        peca(ini, o.m - o.l / 2, y0, y1); if (o.a > 0) peca(o.m - o.l / 2, o.m + o.l / 2, y0, y0 + o.a, 'peitoril'); peca(o.m - o.l / 2, o.m + o.l / 2, y0 + o.b, y1, 'topo');
+        var px = horiz ? ax + o.m : ax, pz = horiz ? az : az + o.m; (o.porta ? c.portas : c.janelas).push([px, pz, horiz ? 1 : 0, o.l]);
+        ini = o.m + o.l / 2;
+      });
+      peca(ini, comp / 2, y0, y1);
+    }
+    lado(c.x, c.z - c.d / 2, c.w, true, portaLado === 0 || porta2 === 0 && gal);
+    lado(c.x, c.z + c.d / 2, c.w, true, portaLado === 2 || porta2 === 2 && gal);
+    lado(c.x - c.w / 2, c.z, c.d, false, portaLado === 3 || porta2 === 3 && gal);
+    lado(c.x + c.w / 2, c.z, c.d, false, portaLado === 1 || porta2 === 1 && gal);
+  }
+  // fábrica feita por código: galpão com portões, chaminés, silos e contêineres
+  function fabrica(I, c) {
+    var x = c.x, z = c.z, y = c.alt, W = 40, D = 22, H = 9, e = 0.4, P = 5;
+    I.estruturas.push({ tipo: 'galpaoFab', x: x, z: z, y: y, w: W, d: D, h: H });
+    function parede(cx, cz, w, d, y0, y1) { I.paredes.push({ x: cx, z: cz, w: w, d: d, y0: y0, y1: y1, tipo: 'fabrica' }); }
+    // paredes compridas com 2 portões cada; laterais com 1 portão
+    [-1, 1].forEach(function (s2) {
+      var zz = z + s2 * D / 2, cortes = [-W / 2, -10 - P / 2, -10 + P / 2, 10 - P / 2, 10 + P / 2, W / 2];
+      parede(x + (cortes[0] + cortes[1]) / 2, zz, cortes[1] - cortes[0], e, y, y + H); parede(x + (cortes[2] + cortes[3]) / 2, zz, cortes[3] - cortes[2], e, y, y + H); parede(x + (cortes[4] + cortes[5]) / 2, zz, cortes[5] - cortes[4], e, y, y + H);
+      parede(x - 10, zz, P, e, y + 4.2, y + H); parede(x + 10, zz, P, e, y + 4.2, y + H);
+      var xx = x + s2 * W / 2; parede(xx, z - (D / 4 + P / 4), e, D / 2 - P / 2, y, y + H); parede(xx, z + (D / 4 + P / 4), e, D / 2 - P / 2, y, y + H); parede(xx, z, e, P, y + 4.2, y + H);
+    });
+    // máquinas e caixas dentro (cobertura)
+    [[-14, -4, 4, 3, 2.6], [-14, 5, 4, 3, 2.6], [0, 0, 6, 2.5, 3.2], [13, -5, 3, 3, 2], [13, 5, 2, 5, 1.4], [-4, 7, 2.4, 1.4, 1.4], [6, -7, 1.4, 1.4, 1.4]].forEach(function (m) { I.paredes.push({ x: x + m[0], z: z + m[1], w: m[2], d: m[3], y0: y, y1: y + m[4], tipo: 'maquina' }); I.estruturas.push({ tipo: 'maquina', x: x + m[0], z: z + m[1], y: y, w: m[2], d: m[3], h: m[4] }); });
+    // chaminés e silos do lado de fora
+    [[-14, -D / 2 - 6], [-6, -D / 2 - 6]].forEach(function (p) { I.estruturas.push({ tipo: 'chamine', x: x + p[0], z: z + p[1], y: y, r: 1.8, h: 26 }); I.paredes.push({ x: x + p[0], z: z + p[1], w: 3.6, d: 3.6, y0: y, y1: y + 26, tipo: 'chamine' }); });
+    [[W / 2 + 6, -6], [W / 2 + 6, 1], [W / 2 + 6, 8]].forEach(function (p) { I.estruturas.push({ tipo: 'silo', x: x + p[0], z: z + p[1], y: y, r: 2.6, h: 12 }); I.paredes.push({ x: x + p[0], z: z + p[1], w: 5.2, d: 5.2, y0: y, y1: y + 12, tipo: 'silo' }); });
+    // contêineres empilhados
+    [[-W / 2 - 6, -6, 0, 1], [-W / 2 - 6, 2, 1, 2], [-W / 2 - 6, 2, 0, 0], [8, D / 2 + 7, 0, 3], [14.5, D / 2 + 7, 0, 1], [14.5, D / 2 + 7, 1, 0]].forEach(function (p, i) { var rot = i > 2; I.caixas.push({ x: x + p[0], z: z + p[1], w: rot ? 6 : 2.5, d: rot ? 2.5 : 6, h: 2.6, y0: y + p[2] * 2.6, tipo: 'container', cor: p[3] }); I.paredes.push({ x: x + p[0], z: z + p[1], w: rot ? 6 : 2.5, d: rot ? 2.5 : 6, y0: y + p[2] * 2.6, y1: y + p[2] * 2.6 + 2.6, tipo: 'container' }); });
+  }
+  // cerca de madeira em volta do quintal (com portão aberto e alguns buracos)
+  function cercaDoQuintal(I, c, r) {
+    var m = 2.6 + r() * 1.5, w = c.w + m * 2, d = c.d + m * 2, y0 = c.y, y1 = c.y + 1.5, e = 0.14;
+    var lados = [[c.x, c.z - d / 2, w, true], [c.x, c.z + d / 2, w, true], [c.x - w / 2, c.z, d, false], [c.x + w / 2, c.z, d, false]];
+    lados.forEach(function (l) {
+      var comp = l[2], vaos = [(r() - 0.5) * (comp - 4)]; if (r() < 0.5) vaos.push((r() - 0.5) * (comp - 4));
+      var cortes = vaos.sort(function (a, b) { return a - b; }), ini = -comp / 2;
+      cortes.concat([comp / 2 + 1.4]).forEach(function (cc) {
+        var fim = Math.min(comp / 2, cc - 1.4); if (fim - ini > 0.6) { var mm = (ini + fim) / 2, t = fim - ini, seg = l[3] ? { x: l[0] + mm, z: l[1], w: t, d: e, y0: y0, y1: y1, tipo: 'cerca' } : { x: l[0], z: l[1] + mm, w: e, d: t, y0: y0, y1: y1, tipo: 'cerca' };
+          var bate = I.casas.some(function (o) { return o !== c && Math.abs(o.x - seg.x) < (o.w + seg.w) / 2 + 1.2 && Math.abs(o.z - seg.z) < (o.d + seg.d) / 2 + 1.2; }) || I.paredes.some(function (p) { return p.tipo === 'cerca' && Math.abs(p.x - seg.x) < (p.w + seg.w) / 2 + 0.6 && Math.abs(p.z - seg.z) < (p.d + seg.d) / 2 + 0.6; });
+          if (!bate) I.paredes.push(seg); }
+        ini = cc + 1.4;
+      });
+    });
+  }
+  // altura do chão: ilha redonda com morros, cidades planas
+  function alturaBruta(I, x, z) {
+    var s = I.seed % 1000, ang = Math.atan2(z, x), borda = R.MEIO * (0.78 + (fbm(Math.cos(ang) * 1.6 + 7, Math.sin(ang) * 1.6 + 3, s + 9) - 0.5) * 0.45);
+    var d = Math.hypot(x, z) / borda, base = (1 - d * d) * 16 - 2.2;
+    var morro = Math.pow(fbm(x / 70 + 11, z / 70 + 5, s), 2.2) * 34 * Math.max(0, 1 - d);
+    var det = (fbm(x / 14, z / 14, s + 3) - 0.5) * 2.2, h = base + morro + det;
+    if (I.lago) { var dl = Math.hypot(x - I.lago.x, z - I.lago.z) / I.lago.r; if (dl < 1.8) { var fundo = -2.5 + Math.max(0, dl - 0.55) * 6; h = Math.min(h, dl < 1 ? fundo : fundo + (h - fundo) * suave(Math.min(1, (dl - 1) / 0.8)) ); } }
+    if (I.ilhotas) I.ilhotas.forEach(function (il) { var di = Math.hypot(x - il.x, z - il.z) / il.r; if (di < 1) h = Math.max(h, (1 - di * di) * 5 - 0.8 + (fbm(x / 9, z / 9, s + 5) - 0.5) * 2); });
+    return h;
+  }
+  function altura(I, x, z) {
+    var h = alturaBruta(I, x, z);
+    for (var i = 0; i < I.cidades.length; i++) { var c = I.cidades[i], d = Math.hypot(c.x - x, c.z - z); if (d < c.r + 22) { var k = d < c.r ? 1 : 1 - suave((d - c.r) / 22); h = h + (c.alt - h) * k; } }
+    // estradas um pouco aplainadas
+    return h;
+  }
+
+  /* ---------- colisão (grade para ficar rápido) ---------- */
+  var CEL = 16;
+  function indexar(I) {
+    var g = {}; function por(k, o) { (g[k] || (g[k] = [])).push(o); }
+    I.paredes.forEach(function (p) { for (var i = Math.floor((p.x - p.w / 2) / CEL); i <= Math.floor((p.x + p.w / 2) / CEL); i++) for (var j = Math.floor((p.z - p.d / 2) / CEL); j <= Math.floor((p.z + p.d / 2) / CEL); j++) por(i + ',' + j, p); });
+    I.arvores.forEach(function (a) { a.raio = a.tipo === 'arvore' ? 0.45 : 0.3; por(Math.floor(a.x / CEL) + ',' + Math.floor(a.z / CEL), a); });
+    I.pedras.forEach(function (p) { p.raio = p.r * 0.85; for (var i = Math.floor((p.x - p.r) / CEL); i <= Math.floor((p.x + p.r) / CEL); i++) for (var j = Math.floor((p.z - p.r) / CEL); j <= Math.floor((p.z + p.r) / CEL); j++) por(i + ',' + j, p); });
+    I.grade = g;
+  }
+  function vizinhos(I, x, z) { var i = Math.floor(x / CEL), j = Math.floor(z / CEL), out = []; for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) { var l = I.grade[(i + a) + ',' + (j + b)]; if (l) for (var k = 0; k < l.length; k++) out.push(l[k]); } return out; }
+  // está livre para um corpo de raio r com os pés na altura y?
+  function livre(I, x, z, r, y, extras) {
+    if (!I.grade) return true;
+    var l = vizinhos(I, x, z);
+    for (var i = 0; i < l.length; i++) {
+      var o = l[i];
+      if (o.w !== undefined) { if (y + 1.6 < o.y0 || y > o.y1 - 0.3) continue; if (Math.abs(x - o.x) < o.w / 2 + r && Math.abs(z - o.z) < o.d / 2 + r) return false; }
+      else if (o.raio !== undefined) { if (y > o.y + (o.r ? o.r * 1.2 : 6)) continue; var dx = x - o.x, dz = z - o.z, rr = o.raio + r; if (dx * dx + dz * dz < rr * rr) return false; }
+    }
+    if (extras) for (var e = 0; e < extras.length; e++) { var g = extras[e]; if (y + 1.6 < g.y || y > g.y + 2.4) continue; if (dentroGelo(g, x, z, r)) return false; }
+    return true;
+  }
+  function dentroGelo(g, x, z, r) { var dx = x - g.x, dz = z - g.z, c = Math.cos(g.ry), s = Math.sin(g.ry), lx = dx * c - dz * s, lz = dx * s + dz * c; return Math.abs(lx) < 1.7 + r && Math.abs(lz) < 0.3 + r; }
+  function mover(I, o, dx, dz, r, extras) {
+    var y = o.y; if (livre(I, o.x + dx, o.z, r, y, extras)) o.x += dx; if (livre(I, o.x, o.z + dz, r, y, extras)) o.z += dz;
+    var lim = R.MEIO + 40; o.x = Math.max(-lim, Math.min(lim, o.x)); o.z = Math.max(-lim, Math.min(lim, o.z));
+  }
+  // tiro: distância até a primeira coisa sólida no caminho (paredes, pedras, chão, gelo)
+  function raioMundo(I, o, d, max, gelos) {
+    var melhor = max, passo = 2;
+    // chão (marcha simples)
+    for (var t = 1; t < max; t += passo) { var px = o[0] + d[0] * t, py = o[1] + d[1] * t, pz = o[2] + d[2] * t; if (py < Math.max(R.AGUA - 0.5, altura(I, px, pz)) - 0.05) { melhor = Math.max(0, t - passo / 2); break; } }
+    // caixas (paredes) — teste de laje 3D
+    var vistos = new Set();
+    for (var u = 0; u < melhor; u += CEL * 0.8) {
+      var l = vizinhos(I, o[0] + d[0] * u, o[2] + d[2] * u);
+      for (var i = 0; i < l.length; i++) {
+        var b = l[i]; if (vistos.has(b)) continue; vistos.add(b);
+        var mn, mx; if (b.w !== undefined) { mn = [b.x - b.w / 2, b.y0, b.z - b.d / 2]; mx = [b.x + b.w / 2, b.y1, b.z + b.d / 2]; }
+        else if (b.r) { mn = [b.x - b.raio, b.y - 1, b.z - b.raio]; mx = [b.x + b.raio, b.y + b.r * 1.1, b.z + b.raio]; }
+        else { mn = [b.x - b.raio, b.y - 1, b.z - b.raio]; mx = [b.x + b.raio, b.y + 7, b.z + b.raio]; }
+        var tt = laje(o, d, mn, mx); if (tt !== null && tt < melhor) melhor = tt;
+      }
+    }
+    if (gelos) gelos.forEach(function (g) {
+      var c = Math.cos(g.ry), s = Math.sin(g.ry), ox = o[0] - g.x, oz = o[2] - g.z, lo = [ox * c - oz * s, o[1] - g.y, ox * s + oz * c], ld = [d[0] * c - d[2] * s, d[1], d[0] * s + d[2] * c];
+      var tt = laje(lo, ld, [-1.7, 0, -0.3], [1.7, 2.4, 0.3]); if (tt !== null && tt < melhor) { melhor = tt; g._hit = true; }
+    });
     return melhor;
   }
-  function raioEsfera(o, d, c, r) {
-    var ox = o.x - c.x, oy = o.y - c.y, oz = o.z - c.z, b = ox * d.x + oy * d.y + oz * d.z, cc = ox * ox + oy * oy + oz * oz - r * r, h = b * b - cc;
-    if (h < 0) return -1; var t = -b - Math.sqrt(h); return t >= 0 ? t : -1;
-  }
-  // caixas de acerto do jogador: corpo e cabeça
-  function hitbox(j) {
-    var alt = j.agachado ? R.ALTURA_AGACHADO : R.ALTURA, cab = j.agachado ? 1.05 : 1.55;
-    return { corpo: [j.x, j.y, j.z, 0.7, cab - 0.12, 0.7], cabeca: { x: j.x, y: j.y + cab + 0.1, z: j.z }, rCab: 0.22, alt: alt };
-  }
-  function olho(j) { return j.y + (j.agachado ? R.OLHO_AGACHADO : R.OLHO); }
-  function dirDe(yaw, pitch) { var c = Math.cos(pitch); return { x: -Math.sin(yaw) * c, y: Math.sin(pitch), z: -Math.cos(yaw) * c }; }
-  // grade de navegação dos bots (no chão, a cada 1 m)
-  // altura do chão num ponto (degraus e andares maciços; lajes finas no alto não contam)
-  function chaoEm(mapa, x, z) { var h = 0; for (var c = 0; c < mapa.caixas.length; c++) { var b = mapa.caixas[c]; if (b[1] <= 0.05 && b[1] + b[4] <= 4.2 && b[1] + b[4] > h && Math.abs(x - b[0]) < b[3] / 2 && Math.abs(z - b[2]) < b[5] / 2) h = b[1] + b[4]; } return h; }
-  function grade(mapa) {
-    var W = mapa.lim[0], D = mapa.lim[1], cel = 1, nx = Math.floor(W * 2 / cel), nz = Math.floor(D * 2 / cel), livre = new Uint8Array(nx * nz), alt = new Float32Array(nx * nz);
-    for (var i = 0; i < nx; i++) for (var k = 0; k < nz; k++) {
-      var x = -W + (i + 0.5) * cel, z = -D + (k + 0.5) * cel, h = 0;
-      // chão = topo da caixa que começa no chão e para até 4,2 m (degraus, andar de cima maciço); lajes finas no alto não contam
-      for (var c = 0; c < mapa.caixas.length; c++) { var b = mapa.caixas[c]; if (b[1] <= 0.05 && b[1] + b[4] <= 4.2 && b[1] + b[4] > h && Math.abs(x - b[0]) < b[3] / 2 && Math.abs(z - b[2]) < b[5] / 2) h = b[1] + b[4]; }
-      alt[i + k * nx] = h; livre[i + k * nx] = colide(mapa, x, h + R.DEGRAU, z, R.ALTURA - R.DEGRAU) ? 0 : 1; // degrau baixo não trava
+  function laje(o, d, mn, mx) {
+    var t0 = 0, t1 = 1e9;
+    for (var k = 0; k < 3; k++) {
+      if (Math.abs(d[k]) < 1e-9) { if (o[k] < mn[k] || o[k] > mx[k]) return null; continue; }
+      var a = (mn[k] - o[k]) / d[k], b = (mx[k] - o[k]) / d[k]; if (a > b) { var s = a; a = b; b = s; }
+      t0 = Math.max(t0, a); t1 = Math.min(t1, b); if (t0 > t1) return null;
     }
-    return { nx: nx, nz: nz, cel: cel, W: W, D: D, livre: livre, alt: alt };
+    return t0 > 0.05 ? t0 : null;
   }
-  return { NOME: NOME, R: R, ARMAS: ARMAS, PRIMARIAS: PRIMARIAS, MODOS: MODOS, RODADA: RODADA, BOMBA: BOMBA, porRodada: porRodada, contaKills: contaKills, MAPAS: MAPAS, PATENTES: PATENTES, LOJA: LOJA, COLETES: COLETES, SKINS: SKINS, ITENS: ITENS, KITS: KITS, itemAtivo: itemAtivo, item: item, moedasPartida: moedasPartida, patente: patente, insignia: insignia, xpPara: xpPara,
-    colide: colide, mover: mover, raioMapa: raioMapa, raioCaixa: raioCaixa, raioEsfera: raioEsfera, hitbox: hitbox, olho: olho, dirDe: dirDe, grade: grade, chaoEm: chaoEm };
-});
+  // corpo do jogador: cabeça (esfera) e corpo (caixa)
+  function acertaCorpo(o, d, p, agachado) {
+    var hy = agachado ? 1.2 : 1.62, cx = p.x - o[0], cy = p.y + hy - o[1], cz = p.z - o[2];
+    var t = cx * d[0] + cy * d[1] + cz * d[2];
+    if (t > 0) { var qx = cx - d[0] * t, qy = cy - d[1] * t, qz = cz - d[2] * t; if (qx * qx + qy * qy + qz * qz < 0.2 * 0.2) return { t: t, cabeca: true }; }
+    var tt = laje(o, d, [p.x - 0.3, p.y, p.z - 0.3], [p.x + 0.3, p.y + (agachado ? 1.05 : 1.45), p.z + 0.3]);
+    return tt !== null ? { t: tt, cabeca: false } : null;
+  }
+
+  /* ---------- armas e itens ---------- */
+  var ARMAS = {
+    soco: { nome: 'Soco', dano: 18, cad: 0.45, pente: 0, mun: null, alc: 2, disp: 0, cls: 'mao' },
+    p9: { nome: 'Pistola P9', dano: 26, cad: 0.22, pente: 12, mun: 'leve', alc: 60, disp: 0.012, rec: 0.6, cls: 'pistola', miras: ['2x'] },
+    vx45: { nome: 'SMG Vespa', dano: 17, cad: 0.075, pente: 30, mun: 'leve', alc: 70, disp: 0.03, rec: 0.35, cls: 'smg', miras: ['2x'] },
+    ar9: { nome: 'Fuzil Falcão', dano: 28, cad: 0.12, pente: 30, mun: 'media', alc: 160, disp: 0.018, rec: 0.55, cls: 'fuzil', miras: ['2x', '4x'] },
+    b3: { nome: 'Fuzil Garça', dano: 33, cad: 0.16, pente: 25, mun: 'media', alc: 180, disp: 0.012, rec: 0.6, cls: 'fuzil', miras: ['2x', '4x'] },
+    t12: { nome: 'Escopeta Trovão', dano: 16, chumbos: 8, cad: 0.85, pente: 6, mun: 'cartucho', alc: 22, disp: 0.075, rec: 1.6, cls: 'escopeta', miras: [] },
+    l7: { nome: 'Sniper Águia', dano: 110, cad: 1.5, pente: 5, mun: 'pesada', alc: 400, disp: 0.002, rec: 2, cls: 'sniper', miras: ['2x', '4x', '8x'] }
+  };
+  var ITENS = {
+    arma: { nome: 'Arma' },
+    leve: { nome: 'Munição leve', qtd: 40 }, media: { nome: 'Munição média', qtd: 40 }, cartucho: { nome: 'Cartuchos', qtd: 12 }, pesada: { nome: 'Munição pesada', qtd: 10 },
+    colete: { nome: 'Colete' }, capacete: { nome: 'Capacete' },
+    kit: { nome: 'Kit médico', qtd: 2 }, gelo: { nome: 'Parede de gelo', qtd: 3 },
+    mira2x: { nome: 'Mira 2x' }, mira4x: { nome: 'Mira 4x' }, mira8x: { nome: 'Mira 8x' }, moeda: { nome: 'Moedas', qtd: 10 }
+  };
+  var PROTECAO = [0, 0.3, 0.42, 0.55], DURAB = [0, 120, 200, 300];
+  // sorteia o que aparece num ponto de loot
+  function sortearLoot(r, rico) {
+    var x = r(), out = [];
+    var listaA = rico ? ['ar9', 'b3', 'l7', 't12', 'vx45', 'ar9'] : ['p9', 'p9', 'vx45', 'ar9', 't12', 'vx45', 'b3', 'l7'];
+    if (x < 0.42) { var a = listaA[(r() * listaA.length) | 0]; out.push({ tipo: 'arma', arma: a }); out.push({ tipo: ARMAS[a].mun, qtd: ITENS[ARMAS[a].mun].qtd }); }
+    else if (x < 0.58) { var m = ['leve', 'media', 'cartucho', 'pesada'][(r() * 4) | 0]; out.push({ tipo: m, qtd: ITENS[m].qtd }); }
+    else if (x < 0.68) out.push({ tipo: 'colete', nv: rico ? 2 + (r() < 0.35 ? 1 : 0) : 1 + (r() < 0.3 ? 1 : 0) });
+    else if (x < 0.77) out.push({ tipo: 'capacete', nv: rico ? 2 + (r() < 0.35 ? 1 : 0) : 1 + (r() < 0.3 ? 1 : 0) });
+    else if (x < 0.87) out.push({ tipo: 'kit', qtd: 2 });
+    else if (x < 0.95) out.push({ tipo: 'gelo', qtd: 3 });
+    else out.push({ tipo: ['mira2x', 'mira2x', 'mira4x', 'mira8x'][(r() * 4) | 0] });
+    if (r() < 0.35) out.push({ tipo: 'moeda', qtd: 5 + ((r() * 16) | 0) });
+    return out;
+  }
+  // zona: fases (espera, fecha, raio)
+  var ZONA = [[60, 40, 150], [45, 35, 95], [40, 30, 55], [35, 25, 28], [30, 20, 10], [25, 15, 0]];
+  var DANO_ZONA = [2, 4, 7, 10, 15, 25];
+  function nomeItem(it) { if (it.tipo === 'arma') return ARMAS[it.arma].nome; if (it.tipo === 'colete' || it.tipo === 'capacete') return ITENS[it.tipo].nome + ' Nv.' + it.nv; return ITENS[it.tipo].nome + (it.qtd ? ' x' + it.qtd : ''); }
+
+  var api = { R: R, rng: rng, gerar: gerar, altura: altura, livre: livre, mover: mover, raioMundo: raioMundo, acertaCorpo: acertaCorpo, vizinhos: vizinhos, dentroGelo: dentroGelo, ARMAS: ARMAS, ITENS: ITENS, PROTECAO: PROTECAO, DURAB: DURAB, sortearLoot: sortearLoot, ZONA: ZONA, DANO_ZONA: DANO_ZONA, nomeItem: nomeItem };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else raiz.REGRAS = api;
+})(this);

@@ -1,11 +1,7 @@
 {
-  "appId": "com.alvozero.fps",
-  "appName": "Alvo Zero",
+  "appId": "com.quedalivre.br",
+  "appName": "Queda Livre",
   "webDir": "public",
-  "server": {
-    "url": "https://COLOQUE-SEU-SITE.onrender.com",
-    "androidScheme": "https",
-    "errorPath": "offline.html"
-  },
-  "android": { "allowMixedContent": false, "backgroundColor": "#0d1117" }
+  "server": { "url": "https://COLOQUE-SEU-SITE.onrender.com", "androidScheme": "https", "errorPath": "offline.html" },
+  "android": { "allowMixedContent": false, "backgroundColor": "#2f86e8" }
 }
