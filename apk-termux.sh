@@ -16,6 +16,26 @@ npx cap telemetry off
 M="$REPO/android/app/src/main/AndroidManifest.xml"
 grep -q screenOrientation "$M" || sed -i 's/<activity/<activity android:screenOrientation="sensorLandscape"/' "$M"
 npx cap sync android
+# tela cheia de verdade (esconde barras e usa a área do entalhe)
+MA=$(find "$REPO/android/app/src/main/java" -name MainActivity.java | head -1)
+PKG=$(grep -m1 '^package' "$MA")
+cat > "$MA" <<JAVA
+$PKG
+import android.os.Build;
+import android.os.Bundle;
+import android.view.View;
+import android.view.WindowManager;
+import com.getcapacitor.BridgeActivity;
+public class MainActivity extends BridgeActivity {
+  @Override public void onCreate(Bundle b) { super.onCreate(b); telaCheia(); }
+  @Override public void onWindowFocusChanged(boolean f) { super.onWindowFocusChanged(f); if (f) telaCheia(); }
+  private void telaCheia() {
+    if (Build.VERSION.SDK_INT >= 28) { WindowManager.LayoutParams lp = getWindow().getAttributes(); lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES; getWindow().setAttributes(lp); }
+    getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+  }
+}
+JAVA
 cd "$REPO/android"
 echo "sdk.dir=$HOME/android-sdk" > local.properties
 sed -i '/android.aapt2FromMavenOverride/d' gradle.properties

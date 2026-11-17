@@ -5,7 +5,7 @@
     MEIO: 230,           // a ilha vai de -MEIO a +MEIO
     AGUA: 0,
     ANDA: 5.6, AGACHA: 2.4, PULO: 6.2, GRAV: 20,
-    QUEDA: 30, MERGULHO: 52, PLANA: 16, PARA_V: 5.5, PARA_H: 9.5, ABRE_PARA: 60,
+    QUEDA: 13, MERGULHO: 40, PLANA: 22, ACELERA: 34, PARA_V: 5.5, PARA_H: 9.5, ABRE_PARA: 60,
     TREM_ALT: 210, TREM_VEL: 30,
     VIDA: 200, MAX_JOG: 24,
     ESPERA: 30, GELO_VIDA: 400, GELO_TEMPO: 25
@@ -52,12 +52,13 @@
         var casa = { id: I.casas.length, x: hx, z: hz, w: w, d: dd, h: base ? 5 : 3.2, cid: c.id, tipo: base ? 'galpao' : 'casa', cor: (r() * 6) | 0, y: c.alt };
         feitas.push(casa); I.casas.push(casa); paredesDaCasa(I, casa, r);
         if (!base && r() < 0.75) cercaDoQuintal(I, casa, r);
+        moveis(I, casa);
       }
       // caixas de madeira e contêineres (cobertura)
       for (var q = 0; q < (base ? 10 : 5); q++) {
         var cx = c.x + (r() - 0.5) * c.r * 1.6, cz = c.z + (r() - 0.5) * c.r * 1.6, cont = base && r() < 0.6;
         var cw = cont ? 6 : 1.4, cd = cont ? 2.5 : 1.4, ch = cont ? 2.6 : 1.4;
-        if (!livre(I, cx, cz, Math.max(cw, cd) / 2 + 1, 0)) continue;
+        if (!livre(I, cx, cz, Math.max(cw, cd) / 2 + 1, 0) || pertoPorta(I, cx, cz, 4)) continue;
         var cx2 = { x: cx, z: cz, w: r() < 0.5 ? cw : cd, d: 0, h: ch, y0: c.alt, tipo: cont ? 'container' : 'caixa', cor: (r() * 4) | 0 }; cx2.d = cx2.w === cw ? cd : cw;
         I.caixas.push(cx2); I.paredes.push({ x: cx, z: cz, w: cx2.w, d: cx2.d, y0: c.alt, y1: c.alt + ch, tipo: cx2.tipo });
       }
@@ -72,20 +73,23 @@
     }
     for (var s2 = 0; s2 < 900 && I.pedras.length < 110; s2++) {
       var px = (r() * 2 - 1) * R.MEIO, pz = (r() * 2 - 1) * R.MEIO, ph = altura(I, px, pz);
-      if (ph < 0.5 || !livre(I, px, pz, 2.5, ph)) continue;
+      if (ph < 0.5 || !livre(I, px, pz, 2.5, ph) || pertoPorta(I, px, pz, 5)) continue;
       I.pedras.push({ x: px, z: pz, y: ph, r: 0.8 + r() * 1.8, rot: r() * 6 });
     }
     indexar(I);
     // pontos de loot: dentro das casas e alguns pelo mapa
     I.casas.forEach(function (c) {
       var n = c.tipo === 'galpao' ? 5 : 3;
-      for (var i = 0; i < n; i++) { var lx = c.x + (r() - 0.5) * (c.w - 2), lz = c.z + (r() - 0.5) * (c.d - 2); if (livre(I, lx, lz, 0.4, c.y)) I.loot.push({ x: lx, z: lz, y: c.y, rico: c.tipo === 'galpao' }); }
+      for (var i = 0; i < n; i++) { var lx = c.x + (r() - 0.5) * (c.w - 2), lz = c.z + (r() - 0.5) * (c.d - 2); if (livre(I, lx, lz, 0.4, c.y) && !pertoPorta(I, lx, lz, 3.6) && !pertoPorta(I, lx - 1, lz, 3.6)) I.loot.push({ x: lx, z: lz, y: c.y, rico: c.tipo === 'galpao' }); }
     });
     if (usina) for (var u = 0; u < 300 && I.loot.filter(function (l) { return l.fab; }).length < 16; u++) { var ux = usina.x + (r() - 0.5) * (r() < 0.6 ? 36 : 70), uz = usina.z + (r() - 0.5) * (r() < 0.6 ? 18 : 50); if (livre(I, ux, uz, 0.6, usina.alt)) I.loot.push({ x: ux, z: uz, y: usina.alt, rico: r() < 0.5, fab: 1 }); }
-    for (var l = 0; l < 500 && I.loot.length < I.casas.length * 3 + 70; l++) { var ox = (r() * 2 - 1) * R.MEIO, oz = (r() * 2 - 1) * R.MEIO, oh = altura(I, ox, oz); if (oh > 0.8 && livre(I, ox, oz, 0.5, oh)) I.loot.push({ x: ox, z: oz, y: oh, rico: false }); }
+    var baus = function () { I.loot.forEach(function (l) { I.paredes.push({ x: l.x - 1.0, z: l.z - 0.2, w: 0.9, d: 0.55, y0: l.y, y1: l.y + 0.55, tipo: "bau" }); }); };
+    for (var l = 0; l < 500 && I.loot.length < I.casas.length * 3 + 70; l++) { var ox = (r() * 2 - 1) * R.MEIO, oz = (r() * 2 - 1) * R.MEIO, oh = altura(I, ox, oz); if (oh > 0.8 && livre(I, ox, oz, 0.5, oh) && !pertoPorta(I, ox, oz, 4.2) && !pertoPorta(I, ox - 1, oz, 4.2)) I.loot.push({ x: ox, z: oz, y: oh, rico: false }); }
+    baus(); indexar(I);
     return I;
   }
   // paredes da casa com porta e JANELAS ABERTAS (dá pra atirar e pular por elas)
+  function pertoPorta(I, x, z, folga) { for (var i = 0; i < I.casas.length; i++) { var ps = I.casas[i].portas || []; for (var k = 0; k < ps.length; k++) if (Math.abs(ps[k][0] - x) < folga && Math.abs(ps[k][1] - z) < folga) return true; } return false; }
   function paredesDaCasa(I, c, r) {
     var e = 0.3, PORTA = 1.6, JAN = 1.3, y0 = c.y, y1 = c.y + c.h, gal = c.tipo === 'galpao';
     var portaLado = (r() * 4) | 0, porta2 = (portaLado + 2) % 4;
@@ -104,10 +108,10 @@
       });
       peca(ini, comp / 2, y0, y1);
     }
-    lado(c.x, c.z - c.d / 2, c.w, true, portaLado === 0 || porta2 === 0 && gal);
-    lado(c.x, c.z + c.d / 2, c.w, true, portaLado === 2 || porta2 === 2 && gal);
-    lado(c.x - c.w / 2, c.z, c.d, false, portaLado === 3 || porta2 === 3 && gal);
-    lado(c.x + c.w / 2, c.z, c.d, false, portaLado === 1 || porta2 === 1 && gal);
+    lado(c.x, c.z - c.d / 2, c.w, true, portaLado === 0 || porta2 === 0);
+    lado(c.x, c.z + c.d / 2, c.w, true, portaLado === 2 || porta2 === 2);
+    lado(c.x - c.w / 2, c.z, c.d, false, portaLado === 3 || porta2 === 3);
+    lado(c.x + c.w / 2, c.z, c.d, false, portaLado === 1 || porta2 === 1);
   }
   // fábrica feita por código: galpão com portões, chaminés, silos e contêineres
   function fabrica(I, c) {
@@ -129,16 +133,24 @@
     // contêineres empilhados
     [[-W / 2 - 6, -6, 0, 1], [-W / 2 - 6, 2, 1, 2], [-W / 2 - 6, 2, 0, 0], [8, D / 2 + 7, 0, 3], [14.5, D / 2 + 7, 0, 1], [14.5, D / 2 + 7, 1, 0]].forEach(function (p, i) { var rot = i > 2; I.caixas.push({ x: x + p[0], z: z + p[1], w: rot ? 6 : 2.5, d: rot ? 2.5 : 6, h: 2.6, y0: y + p[2] * 2.6, tipo: 'container', cor: p[3] }); I.paredes.push({ x: x + p[0], z: z + p[1], w: rot ? 6 : 2.5, d: rot ? 2.5 : 6, y0: y + p[2] * 2.6, y1: y + p[2] * 2.6 + 2.6, tipo: 'container' }); });
   }
+  // móveis com colisão (as mesmas posições que o desenho usa)
+  function moveis(I, c) {
+    var y = c.y, add = function (x, z, w, d, h) { if ((c.portas || []).some(function (p) { return Math.abs(p[0] - x) < w / 2 + 2.3 && Math.abs(p[1] - z) < d / 2 + 2.3; })) return; I.paredes.push({ x: x, z: z, w: w, d: d, y0: y, y1: y + h, tipo: 'movel' }); (c.moveis = c.moveis || []).push([x, z]); };
+    if (c.tipo === 'galpao') { for (var b = 0; b < 4; b++) add(c.x + (b - 1.5) * 2.6, c.z + c.d / 2 - 1.2, 1.2, 1.2, 1.2); return; }
+    var rr = rng(c.id * 13 + 7), mx = c.x + (rr() - 0.5) * (c.w - 3), mz = c.z + (rr() - 0.5) * (c.d - 3);
+    add(mx, mz, 1.4, 0.9, 0.8); add(c.x - c.w / 2 + 1.2, c.z + c.d / 2 - 1.4, 1.0, 2.0, 0.55); add(c.x + c.w / 2 - 0.8, c.z - c.d / 2 + 1.6, 0.8, 1.8, 0.95); add(c.x - c.w / 2 + 0.4, c.z - c.d / 2 + 1.2, 0.4, 1.2, 1.8);
+  }
   // cerca de madeira em volta do quintal (com portão aberto e alguns buracos)
   function cercaDoQuintal(I, c, r) {
     var m = 2.6 + r() * 1.5, w = c.w + m * 2, d = c.d + m * 2, y0 = c.y, y1 = c.y + 1.5, e = 0.14;
     var lados = [[c.x, c.z - d / 2, w, true], [c.x, c.z + d / 2, w, true], [c.x - w / 2, c.z, d, false], [c.x + w / 2, c.z, d, false]];
     lados.forEach(function (l) {
       var comp = l[2], vaos = [(r() - 0.5) * (comp - 4)]; if (r() < 0.5) vaos.push((r() - 0.5) * (comp - 4));
+      (c.portas || []).forEach(function (p) { if (l[3] && p[2] && Math.sign(p[1] - c.z) === Math.sign(l[1] - c.z)) vaos.push(p[0] - c.x); if (!l[3] && !p[2] && Math.sign(p[0] - c.x) === Math.sign(l[0] - c.x)) vaos.push(p[1] - c.z); });
       var cortes = vaos.sort(function (a, b) { return a - b; }), ini = -comp / 2;
       cortes.concat([comp / 2 + 1.4]).forEach(function (cc) {
         var fim = Math.min(comp / 2, cc - 1.4); if (fim - ini > 0.6) { var mm = (ini + fim) / 2, t = fim - ini, seg = l[3] ? { x: l[0] + mm, z: l[1], w: t, d: e, y0: y0, y1: y1, tipo: 'cerca' } : { x: l[0], z: l[1] + mm, w: e, d: t, y0: y0, y1: y1, tipo: 'cerca' };
-          var bate = I.casas.some(function (o) { return o !== c && Math.abs(o.x - seg.x) < (o.w + seg.w) / 2 + 1.2 && Math.abs(o.z - seg.z) < (o.d + seg.d) / 2 + 1.2; }) || I.paredes.some(function (p) { return p.tipo === 'cerca' && Math.abs(p.x - seg.x) < (p.w + seg.w) / 2 + 0.6 && Math.abs(p.z - seg.z) < (p.d + seg.d) / 2 + 0.6; });
+          var bate = I.casas.some(function (o) { return o !== c && Math.abs(o.x - seg.x) < (o.w + seg.w) / 2 + 1.2 && Math.abs(o.z - seg.z) < (o.d + seg.d) / 2 + 1.2; }) || I.paredes.some(function (p) { return p.tipo === 'cerca' && Math.abs(p.x - seg.x) < (p.w + seg.w) / 2 + 0.6 && Math.abs(p.z - seg.z) < (p.d + seg.d) / 2 + 0.6; }) || I.casas.some(function (o) { return o !== c && (o.portas || []).some(function (pt) { return Math.abs(pt[0] - seg.x) < seg.w / 2 + 2.6 && Math.abs(pt[1] - seg.z) < seg.d / 2 + 2.6; }); });
           if (!bate) I.paredes.push(seg); }
         ini = cc + 1.4;
       });

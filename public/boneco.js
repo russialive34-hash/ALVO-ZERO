@@ -93,8 +93,8 @@
     var hY = 0.97, tx = 0, ty = 0, cRx = 0, cRz = 0, bE = [0, 0, 0.1], bD = [0, 0, -0.1], cE = -0.2, cD = -0.2, pE = 0, pD = 0, jE = 0, jD = 0, cab = 0;
     o.prancha.visible = est === 'ar'; o.arma.visible = est === 'chao' || est === 'cabine' || est === 'morto';
     if (est === 'ar') {
-      cRx = 1.25; hY = 0.97; bE = [-0.3, 0, 1.3 + Math.sin(t * 7) * 0.08]; bD = [-0.3, 0, -1.3 - Math.sin(t * 7.3) * 0.08]; cE = -0.3; cD = -0.3; pE = -0.5; pD = -0.25; jE = 0.9; jD = 0.6; cab = -0.9;
-      o.prancha.position.set(0, 0.0, 0.05); o.prancha.rotation.set(0, 0, Math.sin(t * 3) * 0.08); o.fogo.scale.y = 0.8 + Math.random() * 0.5;
+      cRx = 0; cRz = 0; hY = 0.85; tx = 0.25; bE = [-0.4, 0, 1.0 + Math.sin(t * 5) * 0.08]; bD = [0.2, 0, -0.9 - Math.sin(t * 5.3) * 0.08]; cE = -0.4; cD = -0.3; pE = -0.55; pD = 0.35; jE = 0.8; jD = 0.5; cab = 0.1;
+      o.prancha.position.set(0, 0.04, 0); o.prancha.rotation.set(0, Math.PI / 2, Math.sin(t * 3) * 0.06); o.fogo.scale.y = 0.8 + Math.random() * 0.5; ty = -1.2;
     } else if (est === 'para') {
       bE = [0.1, 0, 2.6]; bD = [0.1, 0, -2.6]; cE = -0.6; cD = -0.6; pE = Math.sin(t * 2) * 0.2; pD = -Math.sin(t * 2) * 0.2; jE = 0.3; jD = 0.4; cab = 0.15;
     } else if (est === 'morto') {
@@ -114,7 +114,7 @@
       if (f & 64) { bD = [-1.6, 0, -0.1]; cD = 0; } // soco
     }
     o.quad.position.y = lerp(o.quad.position.y, hY, k);
-    rot(o.corpo, cRx, 0, cRz, k); rot(o.tronco, tx, ty, 0, k); rot(o.cab, cab, 0, 0, k);
+    rot(o.corpo, cRx, est === 'ar' ? 1.2 : 0, cRz, k); rot(o.tronco, tx, est === 'ar' ? 0 : ty, 0, k); rot(o.cab, cab, 0, 0, k);
     rot(o.be.omb, bE[0], bE[1], bE[2], k); rot(o.bd.omb, bD[0], bD[1], bD[2], k); rot(o.be.cot, cE, 0, 0, k); rot(o.bd.cot, cD, 0, 0, k);
     rot(o.pe.q, pE, 0, 0, k); rot(o.pd.q, pD, 0, 0, k); rot(o.pe.j, jE, 0, 0, k); rot(o.pd.j, jD, 0, 0, k);
   };

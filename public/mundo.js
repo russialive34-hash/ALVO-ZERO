@@ -124,12 +124,13 @@
       (c.portas || []).forEach(function (pt) { var hor = pt[2], l = pt[3]; Jc.caixa(hor ? l + 0.3 : 0.42, 0.18, hor ? 0.42 : l + 0.3, pt[0], y + (c.tipo === 'galpao' ? 3.25 : 2.35), pt[1], 0, mMold); });
       // móveis dentro
       if (!gal) {
-        var r = G.rng(c.id * 13 + 7), mx2 = c.x + (r() - 0.5) * (c.w - 3), mz2 = c.z + (r() - 0.5) * (c.d - 3);
+        var r = G.rng(c.id * 13 + 7), mx2 = c.x + (r() - 0.5) * (c.w - 3), mz2 = c.z + (r() - 0.5) * (c.d - 3), tem = function (x, z) { return (c.moveis || []).some(function (m) { return Math.abs(m[0] - x) < 0.01 && Math.abs(m[1] - z) < 0.01; }); };
+        if (tem(mx2, mz2)) {
         Jc.caixa(1.4, 0.08, 0.9, mx2, y + 0.78, mz2, 0, mMovel); [[-0.6, -0.35], [0.6, -0.35], [-0.6, 0.35], [0.6, 0.35]].forEach(function (p) { Jc.caixa(0.08, 0.75, 0.08, mx2 + p[0], y + 0.4, mz2 + p[1], 0, mMovel); });
-        [-1, 1].forEach(function (s) { Jc.caixa(0.45, 0.06, 0.45, mx2 + s * 1.05, y + 0.46, mz2, 0, mMovel); Jc.caixa(0.06, 0.5, 0.45, mx2 + s * 1.27, y + 0.73, mz2, 0, mMovel); });
-        var cx2 = c.x - c.w / 2 + 1.2, cz2 = c.z + c.d / 2 - 1.4; Jc.caixa(1.0, 0.35, 2, cx2, y + 0.3, cz2, 0, mCama); Jc.caixa(0.95, 0.1, 1.9, cx2, y + 0.52, cz2, 0, mLencol); Jc.caixa(0.7, 0.14, 0.35, cx2, y + 0.62, cz2 - 0.7, 0, mLencol);
-        var sx = c.x + c.w / 2 - 0.8, sz = c.z - c.d / 2 + 1.6; Jc.caixa(0.8, 0.45, 1.8, sx, y + 0.25, sz, 0, mSofa); Jc.caixa(0.25, 0.5, 1.8, sx + 0.3, y + 0.7, sz, 0, mSofa);
-        Jc.caixa(0.4, 1.8, 1.2, c.x - c.w / 2 + 0.4, y + 0.9, c.z - c.d / 2 + 1.2, 0, mMovel);
+        [-1, 1].forEach(function (s) { Jc.caixa(0.45, 0.06, 0.45, mx2 + s * 1.05, y + 0.46, mz2, 0, mMovel); Jc.caixa(0.06, 0.5, 0.45, mx2 + s * 1.27, y + 0.73, mz2, 0, mMovel); }); }
+        var cx2 = c.x - c.w / 2 + 1.2, cz2 = c.z + c.d / 2 - 1.4; if (tem(cx2, cz2)) Jc.caixa(1.0, 0.35, 2, cx2, y + 0.3, cz2, 0, mCama); if (tem(cx2, cz2)) { Jc.caixa(0.95, 0.1, 1.9, cx2, y + 0.52, cz2, 0, mLencol); Jc.caixa(0.7, 0.14, 0.35, cx2, y + 0.62, cz2 - 0.7, 0, mLencol); }
+        var sx = c.x + c.w / 2 - 0.8, sz = c.z - c.d / 2 + 1.6; if (tem(sx, sz)) { Jc.caixa(0.8, 0.45, 1.8, sx, y + 0.25, sz, 0, mSofa); Jc.caixa(0.25, 0.5, 1.8, sx + 0.3, y + 0.7, sz, 0, mSofa); }
+        if (tem(c.x - c.w / 2 + 0.4, c.z - c.d / 2 + 1.2)) Jc.caixa(0.4, 1.8, 1.2, c.x - c.w / 2 + 0.4, y + 0.9, c.z - c.d / 2 + 1.2, 0, mMovel);
       } else { for (var b = 0; b < 4; b++) Jc.caixa(1.2, 1.2, 1.2, c.x + (b - 1.5) * 2.6, y + 0.6, c.z + c.d / 2 - 1.2, 0, mCaixa); }
     });
     // caixas e contêineres
@@ -215,14 +216,14 @@
   /* ---------- o TREM VOADOR (trem de passageiros moderno) ---------- */
   MU.trem = function (cena) {
     texturas();
-    var g = new THREE.Group(), corpo = new THREE.Group(); g.add(corpo); cena.add(g);
+    var g = new THREE.Group(), corpo = new THREE.Group(); g.add(corpo); cena.add(g); corpo.scale.setScalar(0.7);
     var mBranco = new THREE.MeshPhongMaterial({ color: 0xf4f6f8, shininess: 90, specular: 0x666666 }), mAzul = new THREE.MeshPhongMaterial({ color: 0x1d3fb8, shininess: 80 }), mJan = new THREE.MeshPhongMaterial({ color: 0x0c1a3a, shininess: 140, specular: 0x9fc8ff }),
       mVerde = new THREE.MeshPhongMaterial({ color: 0x8fe05a, shininess: 40 }), mCinza = new THREE.MeshPhongMaterial({ color: 0x8a9096, shininess: 30 }), mEsc = new THREE.MeshPhongMaterial({ color: 0x2b2f36 }), mBrilho = new THREE.MeshBasicMaterial({ color: 0x7fe3ff }), mFarol = new THREE.MeshBasicMaterial({ color: 0xfff6d0 });
     function c(geo, mat, x, y, z, rx, ry, rz) { var o = new THREE.Mesh(geo, mat); o.position.set(x || 0, y || 0, z || 0); o.rotation.set(rx || 0, ry || 0, rz || 0); corpo.add(o); return o; }
     var W = 3.2, H = 3.0, L = 15, N = 5, rodas = [], frente = null;
     function vagao(z0, loc) {
       c(new THREE.BoxGeometry(W, H, L), mBranco, 0, 2.3, z0);
-      var teto = c(new THREE.CylinderGeometry(W / 2, W / 2, L, 20, 1, false, 0, Math.PI), mCinza, 0, 3.8, z0, Math.PI / 2, 0, Math.PI / 2); teto.scale.set(1, 1, 0.35);
+      var teto = c(new THREE.CylinderGeometry(W / 2, W / 2, L, 20), mCinza, 0, 3.75, z0, Math.PI / 2, 0, 0); teto.scale.set(1, 1, 0.32);
       [-1, 1].forEach(function (s) {
         c(new THREE.BoxGeometry(0.06, 1.0, L - 0.6), mJan, s * (W / 2 + 0.02), 2.9, z0); // faixa de janelas
         c(new THREE.BoxGeometry(0.07, 0.16, L), mAzul, s * (W / 2 + 0.03), 2.3, z0); c(new THREE.BoxGeometry(0.07, 0.22, L), mVerde, s * (W / 2 + 0.03), 1.35, z0);
@@ -246,7 +247,7 @@
     var luz = new THREE.PointLight(0x7fe3ff, 0, 30); luz.position.set(0, -1, -20); corpo.add(luz);
     // efeitos: fumaça saindo da frente, faíscas azuis e rastros de luz
     var fumacas = [], mF = new THREE.SpriteMaterial({ map: T.fumaca, transparent: true, depthWrite: false, color: 0xffffff });
-    for (var f = 0; f < 34; f++) { var sp = new THREE.Sprite(mF.clone()); sp.visible = false; cena.add(sp); fumacas.push({ s: sp, t: 99, v: new THREE.Vector3() }); }
+    for (var f = 0; f < 60; f++) { var sp = new THREE.Sprite(mF.clone()); sp.visible = false; cena.add(sp); fumacas.push({ s: sp, t: 99, v: new THREE.Vector3() }); }
     var faiscas = [], mFa = new THREE.SpriteMaterial({ map: T.brilho, color: 0x9ff0ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
     for (var fa = 0; fa < 60; fa++) { var sf = new THREE.Sprite(mFa.clone()); sf.visible = false; sf.scale.setScalar(0.7); cena.add(sf); faiscas.push({ s: sf, t: 99, v: new THREE.Vector3() }); }
     var compT = N * (L + 0.8), rastroGeo = new THREE.PlaneGeometry(0.9, 70); rastroGeo.translate(0, -35, 0); rastroGeo.rotateX(-Math.PI / 2);
@@ -260,7 +261,7 @@
         rodas.forEach(function (r, i) { r.rotation.x += dt * 9; r.material.color.setHSL(0.52, 1, 0.6 + Math.sin(t * 8 + i) * 0.12); });
         if (!ligado) return;
         frente.getWorldPosition(fw);
-        fumacas.forEach(function (f) { f.t += dt; if (f.t > 3 && Math.random() < dt * 6) { f.t = 0; f.s.position.copy(fw); f.v.set((Math.random() - 0.5) * 1.5, 2.5 + Math.random() * 2, (Math.random() - 0.5) * 1.5); f.s.visible = true; } if (f.t < 3) { f.s.position.addScaledVector(f.v, dt); var k = f.t / 3; f.s.scale.setScalar(1.2 + k * 7); f.s.material.opacity = 0.8 * (1 - k); } else f.s.visible = false; });
+        fumacas.forEach(function (f) { f.t += dt; if (f.t > 3 && Math.random() < dt * 14) { f.t = 0; f.s.position.copy(fw); f.v.set((Math.random() - 0.5) * 1.5, 3 + Math.random() * 2.5, (Math.random() - 0.5) * 1.5); f.s.visible = true; } if (f.t < 3) { f.s.position.addScaledVector(f.v, dt); var k = f.t / 3; f.s.scale.setScalar(1.5 + k * 9); f.s.material.opacity = 0.8 * (1 - k); } else f.s.visible = false; });
         faiscas.forEach(function (f) { f.t += dt; if (f.t > 0.9 && Math.random() < dt * 12) { f.t = 0; rodas[(Math.random() * rodas.length) | 0].getWorldPosition(rw); f.s.position.copy(rw); f.v.set((Math.random() - 0.5) * 3, -2 - Math.random() * 3, (Math.random() - 0.5) * 3); f.s.visible = true; } if (f.t < 0.9) { f.s.position.addScaledVector(f.v, dt); f.s.material.opacity = 1 - f.t / 0.9; } else f.s.visible = false; });
         luz.intensity = 1.2;
       },

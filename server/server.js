@@ -384,7 +384,7 @@ function iniciar(porta) {
         if (p.estado === 'espera') { if (j.est === 'cabine') { j.x = x; j.y = y; j.z = z; } return; }
         if (j.est === 'trem' || j.est === 'morto') return;
         const est = EST.indexOf(m.e) >= 2 && EST.indexOf(m.e) <= 4 ? m.e : j.est;
-        const max = (j.est === 'chao' && est === 'chao' ? R.ANDA * 1.6 : 26) * dtp + 0.6;
+        const max = (j.est === 'chao' && est === 'chao' ? R.ANDA * 1.6 : 42) * dtp + 0.6;
         if (Math.hypot(x - j.x, z - j.z) > max) { enviar(j, { t: 'corrige', x: j.x, y: j.y, z: j.z }); return; }
         // não pode voltar a subir no ar
         if ((j.est === 'para' || j.est === 'chao') && est === 'ar') return;

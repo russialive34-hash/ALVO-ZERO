@@ -52,8 +52,9 @@ button { font-family: 'Nunito', system-ui; cursor: pointer; }
 .feed { position: absolute; left: 50%; bottom: 112px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .feed div { font: 900 13px 'Nunito'; text-shadow: 0 1px 3px #000; white-space: nowrap; animation: some 4s forwards; } .feed .ab { color: #ffd23f; margin: 0 5px; } .feed .eu { color: #7dff7a; }
 @keyframes some { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
-.mira { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
-.mira i { position: absolute; background: #fff; box-shadow: 0 0 2px #000; } .mira i:nth-child(1), .mira i:nth-child(2) { width: 2px; height: 8px; left: -1px; } .mira i:nth-child(3), .mira i:nth-child(4) { height: 2px; width: 8px; top: -1px; }
+.mira { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.85); box-shadow: 0 0 2px rgba(0,0,0,.6); }
+.mira::after { content: ''; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: #fff; box-shadow: 0 0 2px #000; }
+.mira i { position: absolute; background: #fff; box-shadow: 0 0 1px #000; } .mira i:nth-child(1) { left: 11px; top: -7px; width: 2px; height: 6px; } .mira i:nth-child(2) { left: 11px; bottom: -7px; width: 2px; height: 6px; } .mira i:nth-child(3) { top: 11px; left: -7px; width: 6px; height: 2px; } .mira i:nth-child(4) { top: 11px; right: -7px; width: 6px; height: 2px; }
 .hit { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px; opacity: 0; background: linear-gradient(45deg, transparent 45%, #fff 45%, #fff 55%, transparent 55%), linear-gradient(-45deg, transparent 45%, #fff 45%, #fff 55%, transparent 55%); }
 .hit.on { animation: hit .25s; } .hit.hs { filter: drop-shadow(0 0 3px #ff2a2a) hue-rotate(0deg); background: linear-gradient(45deg, transparent 42%, #ff3b3b 42%, #ff3b3b 58%, transparent 58%), linear-gradient(-45deg, transparent 42%, #ff3b3b 42%, #ff3b3b 58%, transparent 58%); }
 @keyframes hit { 0% { opacity: 1; transform: scale(1.4); } 100% { opacity: 0; transform: scale(1); } }
@@ -132,3 +133,31 @@ button { font-family: 'Nunito', system-ui; cursor: pointer; }
 .hp { bottom: 8px; width: 320px; } .hp .barra { height: 7px; }
 #tJogo:not([data-fase="chao"]) .tb, #tJogo:not([data-fase="chao"]) .armas, #tJogo:not([data-fase="chao"]) .loot, #tJogo:not([data-fase="chao"]) .mira { display: none; }
 #tJogo[data-fase="morto"] .joy, #tJogo[data-fase="trem"] .joy { display: none; }
+
+/* ---------- HUD arrumado (celular deitado) ---------- */
+.mini { width: 104px !important; height: 104px !important; }
+.armas { width: 196px !important; top: 34px !important; }
+.armas .grande-c { height: 50px !important; } .armas .peq { height: 34px !important; }
+.armas button svg { height: 60% !important; top: 6px !important; }
+.loot { top: 132px !important; max-width: 46vw !important; }
+.loot button { width: 58px !important; height: 62px !important; }
+.joy { left: max(34px, env(safe-area-inset-left)) !important; bottom: 22px !important; width: 128px !important; height: 128px !important; }
+.tb { width: 50px !important; height: 50px !important; font-size: 19px !important; background: rgba(20,30,50,.38) !important; }
+.tb.on { background: rgba(255,210,63,.5) !important; }
+.kit { left: max(12px, env(safe-area-inset-left)) !important; top: 120px !important; bottom: auto !important; }
+.gelo { left: max(12px, env(safe-area-inset-left)) !important; top: 176px !important; bottom: auto !important; }
+.correr { left: max(170px, calc(env(safe-area-inset-left) + 160px)) !important; bottom: 128px !important; color: #ffd23f !important; }
+.tiro2 { left: max(26px, env(safe-area-inset-left)) !important; bottom: 162px !important; width: 50px !important; height: 50px !important; top: auto !important; }
+.tiro { right: max(26px, env(safe-area-inset-right)) !important; bottom: 40px !important; width: 92px !important; height: 92px !important; }
+.mirar { right: max(132px, calc(env(safe-area-inset-right) + 124px)) !important; bottom: 96px !important; }
+.pular { right: max(30px, env(safe-area-inset-right)) !important; bottom: 146px !important; }
+.agachar { right: max(132px, calc(env(safe-area-inset-right) + 124px)) !important; bottom: 30px !important; }
+.recarga { right: max(90px, calc(env(safe-area-inset-right) + 82px)) !important; bottom: 160px !important; width: 44px !important; height: 44px !important; }
+.hp { width: 280px !important; }
+.feed { bottom: 70px !important; }
+@media (max-height: 340px) { .tiro { width: 80px !important; height: 80px !important; } .tb { width: 44px !important; height: 44px !important; } .gelo { top: 166px !important; } .kit { top: 116px !important; } .loot { display: none !important; } }
+
+.ar-bt { position: absolute; pointer-events: auto; width: 74px; height: 74px; border-radius: 50%; border: 2px solid rgba(255,255,255,.7); background: rgba(20,40,80,.55); color: #fff; font: 900 10px 'Nunito'; display: flex; flex-direction: column; align-items: center; justify-content: center; text-shadow: 0 1px 2px #000; }
+.ar-bt i { font-style: normal; font-size: 26px; } .ar-bt.on { background: rgba(255,210,63,.55); border-color: #ffd23f; }
+.acel { left: max(200px, calc(env(safe-area-inset-left) + 190px)); top: 38%; } .merg { right: max(200px, calc(env(safe-area-inset-right) + 190px)); top: 58%; }
+.grande.para { bottom: 30px !important; }

@@ -8,7 +8,7 @@
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   var EST = ['cabine', 'trem', 'ar', 'para', 'chao', 'morto'];
   var celular = matchMedia('(pointer: coarse)').matches;
-  var cfg = { qual: ler('ql_qual', celular ? 'media' : 'alta'), sens: +ler('ql_sens', 1) };
+  var cfg = { qual: ler('ql_qual', celular ? 'media' : 'alta'), sens: +ler('ql_sens2', 1.7) };
 
   /* ---------- 3D ---------- */
   var renderer = new THREE.WebGLRenderer({ antialias: cfg.qual === 'alta', powerPreference: 'high-performance' });
@@ -102,8 +102,8 @@
   $('btConfig').onclick = function () {
     janela('<h3>CONFIGURAÇÕES</h3><p>Gráficos:</p><div class="bts">' + ['baixa', 'media', 'alta'].map(function (q) { return '<button class="bt-pq" data-q="' + q + '"' + (cfg.qual === q ? ' style="background:#2a9d3a"' : '') + '>' + q.toUpperCase() + '</button>'; }).join('') + '</div><p>Sensibilidade da câmera: <b id="jSv">' + cfg.sens.toFixed(1) + '</b></p><div class="bts"><button class="bt-pq" id="jSm">−</button><button class="bt-pq" id="jSp">+</button></div><p style="font-size:12px;opacity:.8">Mudar gráficos recarrega o jogo.</p><div class="bts"><button class="bt-pq" id="jFechar">FECHAR</button></div>');
     [].forEach.call(document.querySelectorAll('#janela [data-q]'), function (b) { b.onclick = function () { gravar('ql_qual', b.dataset.q); location.reload(); }; });
-    $('jSm').onclick = function () { cfg.sens = Math.max(0.4, cfg.sens - 0.1); gravar('ql_sens', cfg.sens); $('jSv').textContent = cfg.sens.toFixed(1); };
-    $('jSp').onclick = function () { cfg.sens = Math.min(2.5, cfg.sens + 0.1); gravar('ql_sens', cfg.sens); $('jSv').textContent = cfg.sens.toFixed(1); };
+    $('jSm').onclick = function () { cfg.sens = Math.max(0.4, cfg.sens - 0.1); gravar('ql_sens2', cfg.sens); $('jSv').textContent = cfg.sens.toFixed(1); };
+    $('jSp').onclick = function () { cfg.sens = Math.min(4, cfg.sens + 0.1); gravar('ql_sens2', cfg.sens); $('jSv').textContent = cfg.sens.toFixed(1); };
   };
   var mudo = ler('ql_mudo', '0') === '1'; S.mudo(mudo); $('btSom').textContent = mudo ? '🔇' : '🔊';
   $('btSom').onclick = function () { mudo = !mudo; gravar('ql_mudo', mudo ? '1' : '0'); S.iniciar(); S.mudo(mudo); $('btSom').textContent = mudo ? '🔇' : '🔊'; };
@@ -346,7 +346,7 @@
     tItens -= dt; if (tItens > 0) return; tItens = 0.4;
     I.loot.forEach(function (l, i) {
       var d = Math.abs(l.x - eu.x) + Math.abs(l.z - eu.z);
-      if (d < 55 && !baus[i]) { var b = modeloBau(i); b.position.set(l.x - 0.7, l.y, l.z - 0.2); b.rotation.y = i; cena.add(b); baus[i] = b; }
+      if (d < 55 && !baus[i]) { var b = modeloBau(i); b.position.set(l.x - 1.0, l.y, l.z - 0.2); cena.add(b); baus[i] = b; }
       else if (d > 70 && baus[i]) { cena.remove(baus[i]); delete baus[i]; }
       if (baus[i]) { var aberto = d < 5 || baus[i].userData.aberto; if (d < 5 && !baus[i].userData.aberto) { baus[i].userData.aberto = true; S.pegar(); } baus[i].userData.tampa.rotation.x = aberto ? -1.9 : 0; }
     });
@@ -363,7 +363,15 @@
     if (eu.est !== 'chao') { if (lootHtml) { lootHtml = ''; $('loot').innerHTML = ''; } return; }
     var perto = Object.keys(P.itens).map(function (k) { return P.itens[k]; }).filter(function (it) { return Math.hypot(it.x - eu.x, it.z - eu.z) < 3 && Math.abs(it.y - eu.y) < 2.5; }).sort(function (a, b) { return Math.hypot(a.x - eu.x, a.z - eu.z) - Math.hypot(b.x - eu.x, b.z - eu.z); }).slice(0, 6);
     // pega sozinho munição da sua arma, kit e gelo
-    perto.forEach(function (it) { var arm = inv.a.some(function (w) { return w && A[w[0]].mun === it.tipo; }); if ((arm || it.tipo === 'moeda' || (it.tipo === 'kit' && inv.kit < 6) || (it.tipo === 'gelo' && inv.g < 10)) && Math.hypot(it.x - eu.x, it.z - eu.z) < 1.8 && !(pegandoAuto[it.id] > performance.now())) { pegandoAuto[it.id] = performance.now() + 1500; mandar({ t: 'pegar', id: it.id }); } });
+    perto.forEach(function (it) {
+      if (Math.hypot(it.x - eu.x, it.z - eu.z) > 2.6 || pegandoAuto[it.id] > performance.now()) return;
+      var serve = false, temArma = inv.a.some(function (w) { return w && A[w[0]].mun === it.tipo; });
+      if (it.tipo === 'arma') serve = !inv.a[0] || !inv.a[1] && !inv.a.some(function (w) { return w && w[0] === it.arma; });
+      else if (it.tipo === 'colete') serve = it.nv > inv.c[0]; else if (it.tipo === 'capacete') serve = it.nv > inv.k[0];
+      else if (/^mira/.test(it.tipo)) serve = inv.mi.indexOf(it.tipo.slice(4)) < 0;
+      else serve = temArma || it.tipo === 'moeda' || (it.tipo === 'kit' && inv.kit < 6) || (it.tipo === 'gelo' && inv.g < 10) || (!inv.a[0] && !inv.a[1] && ['leve', 'media', 'cartucho', 'pesada'].indexOf(it.tipo) >= 0);
+      if (serve) { pegandoAuto[it.id] = performance.now() + 1500; mandar({ t: 'pegar', id: it.id }); }
+    });
     var h = perto.map(function (it) { var rar = it.tipo === 'arma' ? COR_RAR[it.arma] : it.nv || 1; return '<button class="r' + rar + '" data-id="' + it.id + '"><i style="background:#' + ((mItens[it.tipo] || 0x334477).toString(16).padStart(6, '0')) + '33">' + iconeItem(it) + '</i>' + esc(G.nomeItem(it)) + '</button>'; }).join('');
     if (h !== lootHtml) { lootHtml = h; $('loot').innerHTML = h; [].forEach.call($('loot').children, function (b) { b.onpointerdown = function (e) { e.stopPropagation(); mandar({ t: 'pegar', id: +b.dataset.id }); }; }); }
   }
@@ -371,12 +379,12 @@
   /* ---------- armas (HUD) ---------- */
   var armasHtml = '';
   function svg(d) { return '<svg viewBox="0 0 100 40"><path d="' + d + '" fill="#e9eef3"/></svg>'; }
-  var SIL = { fuzil: svg('M4 16h52l4-4h24v6h12v4H84l-6 4H54l-4 10h-9l3-10H30l-8 6H8l2-8H4z'), smg: svg('M14 14h46l4-4h12v6h10v4H76v8h-8v-6H50l-4 12h-9l3-12H22l-6 4h-6l2-8z'), pistola: svg('M30 12h40v8H54l-4 14h-10l3-14H30z'), escopeta: svg('M2 18h66l4-4h26v6H70l-4 4H40l-6 6H10l4-8H2z'), sniper: svg('M2 18h40l4-6h20l2 6h30v4H64l-6 4H40l-4 10h-8l2-10H16l-8 6H2zM44 6h22v6H44z'), mao: svg('M40 10h24l8 6v14l-8 6H44l-6-6V16z') };
+  var SIL0 = { fuzil: svg('M4 16h52l4-4h24v6h12v4H84l-6 4H54l-4 10h-9l3-10H30l-8 6H8l2-8H4z'), smg: svg('M14 14h46l4-4h12v6h10v4H76v8h-8v-6H50l-4 12h-9l3-12H22l-6 4h-6l2-8z'), pistola: svg('M30 12h40v8H54l-4 14h-10l3-14H30z'), escopeta: svg('M2 18h66l4-4h26v6H70l-4 4H40l-6 6H10l4-8H2z'), sniper: svg('M2 18h40l4-6h20l2 6h30v4H64l-6 4H40l-4 10h-8l2-10H16l-8 6H2zM44 6h22v6H44z'), mao: '' }, SIL = SIL0;
   function desenharArmas() {
     var ativa = inv.at >= 0 && inv.a[inv.at] ? inv.at : -1, ordem = ativa >= 0 ? [ativa, 1 - ativa, -1] : [0, 1, -1];
     var h = ordem.map(function (i, n) {
       var w = i >= 0 ? inv.a[i] : null, cls = n === 0 ? 'grande-c on' : 'peq';
-      if (i === -1 || !w) return n === 0 ? '<button data-i="-1" class="grande-c on"><b>👊</b>Soco' + SIL.mao + '</button>' : (i === -1 ? '<button data-i="-1" class="peq"><b>👊</b>' + '</button>' : '<button data-i="' + i + '" class="peq"><b>—</b>vazio</button>');
+      if (i === -1 || !w) return n === 0 ? '<button data-i="-1" class="grande-c on"><b>👊</b>Soco</button>' : (i === -1 ? '<button data-i="-1" class="peq"><b>👊</b>' + '</button>' : '<button data-i="' + i + '" class="peq"><b>—</b>vazio</button>');
       var a = A[w[0]]; return '<button data-i="' + i + '" class="' + cls + '"><b>' + w[1] + '<small style="color:#fff;font:900 11px Nunito">/' + (inv.m[a.mun] || 0) + '</small></b>' + esc(a.nome) + (SIL[a.cls] || '') + '</button>';
     }).join('');
     if (h !== armasHtml) { armasHtml = h; $('armas').innerHTML = h; [].forEach.call($('armas').children, function (b) { b.onpointerdown = function (e) { e.stopPropagation(); var i = +b.dataset.i; if (i >= 0 && !inv.a[i]) return; if (i === inv.at) return; mandar({ t: 'arma', i: i }); S.troca(); }; }); }
@@ -414,7 +422,8 @@
     el.addEventListener('pointerup', solta); el.addEventListener('pointercancel', solta);
   });
   function botao(id, f) { $(id).addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); f(); }); }
-  botao('bMira', function () { alternarMira(); }); botao('bPulo', function () { pulo(); }); botao('bAg', function () { eu.ag = !eu.ag; $('bAg').classList.toggle('on', eu.ag); });
+  ['bAcel', 'bMerg'].forEach(function (id) { var el = $(id), k = id === 'bAcel' ? 'acel' : 'merg'; el.addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); ui[k] = true; el.classList.add('on'); }); ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) { el.addEventListener(t, function () { ui[k] = false; el.classList.remove('on'); }); }); });
+  botao('bMira', function () { alternarMira(); }); botao('bCorrer', function () { ui.autoCorre = !ui.autoCorre; $('bCorrer').classList.toggle('on', ui.autoCorre); }); botao('bPulo', function () { pulo(); }); botao('bAg', function () { eu.ag = !eu.ag; $('bAg').classList.toggle('on', eu.ag); });
   botao('bRec', function () { mandar({ t: 'recarregar' }); S.recarga(inv.a[inv.at] ? inv.a[inv.at][0] : 'ar9', 2); });
   botao('bGelo', function () { if (inv.g > 0 && eu.est === 'chao') mandar({ t: 'gelo', ry: ui.yaw }); });
   botao('bKit', function () { if (inv.kit > 0 && inv.hp < 200) { mandar({ t: 'curar' }); S.cura(); } });
@@ -432,14 +441,19 @@
   addEventListener('keyup', function (e) { teclas[e.key.toLowerCase()] = false; });
   function pulo() {
     if (eu.est !== 'chao' || !eu.noChao || eu.vault) return;
-    // tem cerca ou janela na frente? então pula por cima
-    var dirA = ui.joy.x || ui.joy.y || teclas.w || teclas.a || teclas.s || teclas.d ? eu.ry : ui.yaw, fx = Math.sin(dirA), fz = Math.cos(dirA);
+    var dirA = ui.joy.x || ui.joy.y || teclas.w || teclas.a || teclas.s || teclas.d || ui.autoCorre ? eu.ry : ui.yaw;
+    if (vault(dirA)) return;
+    eu.vy = R.PULO; eu.noChao = false; eu.ag = false; $('bAg').classList.remove('on');
+  }
+  // tem cerca ou janela na frente? então pula por cima
+  function vault(dirA) {
+    var fx = Math.sin(dirA), fz = Math.cos(dirA);
     for (var d = 0.5; d <= 1.1; d += 0.3) {
       var px = eu.x + fx * d, pz = eu.z + fz * d, obst = G.vizinhos(I, px, pz).find(function (o) { return o.w !== undefined && Math.abs(px - o.x) < o.w / 2 + 0.25 && Math.abs(pz - o.z) < o.d / 2 + 0.25 && o.y1 - eu.y > 0.4 && o.y1 - eu.y < 1.75 && o.y0 - eu.y < 0.3; });
       if (!obst) continue;
-      for (var k = 1.4; k <= 2.4; k += 0.25) { var lx = eu.x + fx * k, lz = eu.z + fz * k, lh = G.altura(I, lx, lz); if (G.livre(I, lx, lz, 0.38, lh, geloArr())) { eu.vault = { x0: eu.x, z0: eu.z, y0: eu.y, x1: lx, z1: lz, y1: lh, t: 0, alto: obst.y1 - eu.y + 0.35 }; eu.ry = dirA; S.pouso(); return; } }
+      for (var k = 1.4; k <= 2.4; k += 0.25) { var lx = eu.x + fx * k, lz = eu.z + fz * k, lh = G.altura(I, lx, lz); if (G.livre(I, lx, lz, 0.38, lh, geloArr())) { eu.vault = { x0: eu.x, z0: eu.z, y0: eu.y, x1: lx, z1: lz, y1: lh, t: 0, alto: obst.y1 - eu.y + 0.35 }; eu.ry = dirA; S.pouso(); return true; } }
     }
-    eu.vy = R.PULO; eu.noChao = false; eu.ag = false; $('bAg').classList.remove('on');
+    return false;
   }
   function miras() {
     var w = inv.at >= 0 && inv.a[inv.at] ? A[inv.a[inv.at][0]] : null; if (!w) return [];
@@ -456,6 +470,29 @@
     $('bMira').classList.toggle('on', ui.ads); S.clicar(); if (ui.ads) aviso('Mira ' + (miraAtual() || 'de ferro'), 900);
   }
 
+  /* ---------- mira automática ---------- */
+  function alvoAuto(maxAng) {
+    var w = inv.at >= 0 && inv.a[inv.at] ? A[inv.a[inv.at][0]] : A.soco, melhor = null, ma = maxAng;
+    cam.getWorldDirection(_d);
+    Object.keys(outros).forEach(function (k) {
+      var o = outros[k]; if (o.est !== 'chao' && o.est !== 'para') return;
+      var hy = o.y + ((o.fl & 4) ? 1.2 : 1.62), dx = o.x - cam.position.x, dy = hy - cam.position.y, dz = o.z - cam.position.z, d = Math.hypot(dx, dy, dz);
+      if (d > Math.min(w.alc, 120) || Math.hypot(o.x - eu.x, o.z - eu.z) < 0.6) return;
+      var ang = Math.acos(Math.max(-1, Math.min(1, (dx * _d.x + dy * _d.y + dz * _d.z) / d))); if (ang > ma) return;
+      var ori = [eu.x, eu.y + 1.5, eu.z], dd = [o.x - ori[0], hy - ori[1], o.z - ori[2]], l = Math.hypot(dd[0], dd[1], dd[2]);
+      if (G.raioMundo(I, ori, dd.map(function (v) { return v / l; }), l, geloArr()) < l - 0.6) return;
+      ma = ang; melhor = { o: o, x: o.x, y: hy, z: o.z };
+    });
+    return melhor;
+  }
+  // segurando o tiro: a câmera gruda no inimigo e sobe pra cabeça
+  function grudar(dt) {
+    var a = alvoAuto(ui.ads ? 0.32 : 0.22); if (!a) return;
+    var dx = a.x - cam.position.x, dz = a.z - cam.position.z, dy = a.y - cam.position.y, yaw = Math.atan2(dx, dz), pitch = -Math.atan2(dy, Math.hypot(dx, dz));
+    var dyaw = yaw - ui.yaw; while (dyaw > Math.PI) dyaw -= 2 * Math.PI; while (dyaw < -Math.PI) dyaw += 2 * Math.PI;
+    var k = Math.min(1, dt * 9); ui.yaw += dyaw * k; ui.pitch += (pitch - ui.pitch) * k;
+  }
+
   /* ---------- tiro ---------- */
   var ultTiro = 0, _o = new THREE.Vector3(), _d = new THREE.Vector3();
   function atirar(agora) {
@@ -468,8 +505,9 @@
     var o = [_o.x, _o.y, _o.z], d = [_d.x, _d.y, _d.z], t = G.raioMundo(I, o, d, 400, geloArr());
     Object.keys(outros).forEach(function (k) { var x = outros[k]; if (x.est !== 'chao' && x.est !== 'para') return; var h = G.acertaCorpo(o, d, { x: x.x, y: x.y, z: x.z }, x.fl & 4); if (h && h.t < t) t = h.t; });
     var alvo = [o[0] + d[0] * t, o[1] + d[1] * t, o[2] + d[2] * t], ori = [eu.x, eu.y + (eu.ag ? 1.1 : 1.5), eu.z];
+    var au = alvoAuto(ui.ads ? 0.32 : 0.22); if (au) alvo = [au.x, au.y, au.z];
     var dir = [alvo[0] - ori[0], alvo[1] - ori[1], alvo[2] - ori[2]], l = Math.hypot(dir[0], dir[1], dir[2]) || 1; dir = dir.map(function (v) { return v / l; });
-    var mov = Math.hypot(ui.joy.x, ui.joy.y) > 0.2 || !eu.noChao, sp = (A0.disp || 0) * (A0.chumbos ? 0 : 1) * (mov ? 1.7 : 1) * (ui.ads ? 0.35 : 1) * (eu.ag ? 0.7 : 1) * (1 + ui.recuo * 0.6);
+    var mov = Math.hypot(ui.joy.x, ui.joy.y) > 0.2 || !eu.noChao, sp = (au ? 0.45 : 1) * (A0.disp || 0) * (A0.chumbos ? 0 : 1) * (mov ? 1.7 : 1) * (ui.ads ? 0.35 : 1) * (eu.ag ? 0.7 : 1) * (1 + ui.recuo * 0.6);
     dir = [dir[0] + (Math.random() - 0.5) * sp * 2, dir[1] + (Math.random() - 0.5) * sp * 2, dir[2] + (Math.random() - 0.5) * sp * 2];
     mandar({ t: 'tiro', o: ori.map(function (v) { return +v.toFixed(3); }), d: dir.map(function (v) { return +v.toFixed(4); }) });
     if (w) { w[1]--; S.tiro(arma); clarao(meuId); if (!A0.chumbos) { var tt = G.raioMundo(I, ori, dir, A0.alc, geloArr()); var fimP = [ori[0] + dir[0] * Math.min(tt, t + 2), ori[1] + dir[1] * Math.min(tt, t + 2), ori[2] + dir[2] * Math.min(tt, t + 2), 0]; var b = bocaDe(meuBoneco); tracer([b.x, b.y, b.z], fimP, arma); impacto(fimP); } }
@@ -562,17 +600,17 @@
 
   /* ---------- física local ---------- */
   function andar(dt) {
-    var jx = ui.joy.x, jy = ui.joy.y;
+    var jx = ui.joy.x, jy = ui.joy.y; if (ui.autoCorre && Math.hypot(jx, jy) < 0.2) { jx = 0; jy = -1; }
     if (teclas.w) jy = -1; if (teclas.s) jy = 1; if (teclas.a) jx = -1; if (teclas.d) jx = 1;
-    var mag = Math.min(1, Math.hypot(jx, jy)), ang = ui.yaw + Math.atan2(-jx, -jy);
+    var mag = Math.min(1, Math.hypot(jx, jy)), ang = ui.yaw + Math.atan2(-jx, -jy); if (eu.est === 'ar' && !celular) { ui.acel = !!teclas.shift; ui.merg = !!teclas.q; }
     if (eu.est === 'cabine') return false;
     if (eu.est === 'ar' || eu.est === 'para') {
-      var chao = Math.max(G.altura(I, eu.x, eu.z), R.AGUA - 0.4), vh = eu.est === 'ar' ? R.PLANA : R.PARA_H, vv = eu.est === 'ar' ? (jy < -0.85 ? R.MERGULHO : R.QUEDA) : R.PARA_V;
+      var chao = Math.max(G.altura(I, eu.x, eu.z), R.AGUA - 0.4), acel = ui.acel && eu.est === 'ar', merg = ui.merg && eu.est === 'ar', vh = eu.est === 'ar' ? (acel ? R.ACELERA : merg ? R.PLANA * 0.6 : R.PLANA) : R.PARA_H, vv = eu.est === 'ar' ? (merg ? R.MERGULHO : acel ? R.QUEDA * 1.4 : R.QUEDA) : R.PARA_V; if (acel && mag < 0.1) { mag = 1; ang = ui.yaw; }
       if (mag > 0.1) { eu.x += Math.sin(ang) * vh * mag * dt; eu.z += Math.cos(ang) * vh * mag * dt; var dr = ang - eu.ry; while (dr > Math.PI) dr -= 2 * Math.PI; while (dr < -Math.PI) dr += 2 * Math.PI; eu.ry += dr * Math.min(1, dt * 4); }
       eu.y -= vv * dt; var lim = R.MEIO + 35; eu.x = Math.max(-lim, Math.min(lim, eu.x)); eu.z = Math.max(-lim, Math.min(lim, eu.z));
       if (eu.est === 'ar' && eu.y - chao < R.ABRE_PARA) abrirPara();
       if (eu.y <= chao + 0.02) { eu.y = chao; eu.est = 'chao'; modo = 'chao'; eu.noChao = true; S.pouso(); S.vento(0); aviso('Pegue armas nas casas!', 2500); }
-      S.vento(eu.est === 'ar' ? (vv / R.MERGULHO) : 0.25);
+      S.vento(eu.est === 'ar' ? Math.max(vv / R.MERGULHO, vh / R.ACELERA) : 0.25);
       return mag > 0.1;
     }
     if (eu.est !== 'chao') return false;
@@ -580,6 +618,8 @@
     var noAgua = G.altura(I, eu.x, eu.z) < R.AGUA - 0.4, vel = (eu.ag ? R.AGACHA : R.ANDA) * (ui.ads ? 0.6 : 1) * (noAgua ? 0.55 : 1) * (inv.cu > 0 ? 0.5 : 1);
     if (mag > 0.1) {
       var ax = eu.x, az = eu.z; G.mover(I, eu, Math.sin(ang) * vel * mag * dt, Math.cos(ang) * vel * mag * dt, 0.38, geloArr());
+      // encostou numa janela/cerca andando pra frente: pula sozinho
+      if (mag > 0.6 && Math.hypot(eu.x - ax, eu.z - az) < vel * mag * dt * 0.3) { eu.preso = (eu.preso || 0) + dt; if (eu.preso > 0.35 && eu.noChao) { eu.preso = 0; vault(ang); } } else eu.preso = 0;
       var mira = ui.ads || ui.tiro; if (!mira) { var d2 = ang - eu.ry; while (d2 > Math.PI) d2 -= 2 * Math.PI; while (d2 < -Math.PI) d2 += 2 * Math.PI; eu.ry += d2 * Math.min(1, dt * 12); }
       void ax; void az;
     }
@@ -597,9 +637,9 @@
     if (modo === 'cabine' || modo === 'trem') { var tp = TREM.grupo.position, dist = modo === 'cabine' ? 34 : 44; cam.position.set(tp.x - Math.sin(ui.yaw) * Math.cos(ui.pitch) * dist, tp.y + 6 + Math.sin(ui.pitch) * dist, tp.z - Math.cos(ui.yaw) * Math.cos(ui.pitch) * dist); var fr = TREM.grupo.rotation.y, adiante = modo === 'cabine' ? -30 : 20; _alvo.set(tp.x + Math.sin(fr) * adiante, tp.y, tp.z + Math.cos(fr) * adiante); cam.lookAt(_alvo); cam.fov = 70; cam.updateProjectionMatrix(); return; }
     if (P && P.assistir && modo === 'morto') { var o2 = outros[P.assistir]; if (!o2 || o2.est === 'morto') { var vivos = Object.keys(outros).filter(function (q) { return outros[q].est === 'chao'; }); P.assistir = vivos.length ? +vivos[0] : 0; } if (o2) { cam.position.lerp(new THREE.Vector3(o2.x - Math.sin(o2.ry) * 4, o2.y + 2.4, o2.z - Math.cos(o2.ry) * 4), k); _alvo.set(o2.x, o2.y + 1.4, o2.z); cam.lookAt(_alvo); } return; }
     var ar = e.est === 'ar' || e.est === 'para', mira = miraAtual(), escopo = ui.ads && (mira === '4x' || mira === '8x');
-    var fovAlvo = ui.ads ? (mira === '8x' ? 9 : mira === '4x' ? 18 : mira === '2x' ? 36 : 52) : (ar ? 75 : 70);
+    var fovAlvo = ui.ads ? (mira === '8x' ? 9 : mira === '4x' ? 18 : mira === '2x' ? 34 : 46) : (ar ? 75 : 70);
     cam.fov += (fovAlvo - cam.fov) * Math.min(1, dt * 16); cam.updateProjectionMatrix();
-    $('escopo').hidden = !escopo; $('escopoTxt').textContent = mira || ''; $('ponto').hidden = !(ui.ads && mira === '2x'); $('mira').style.display = escopo || (ui.ads && mira === '2x') ? 'none' : '';
+    $('escopo').hidden = !escopo; $('escopoTxt').textContent = mira || ''; var holo = ui.ads && (mira === '2x' || !mira); $('ponto').hidden = !holo; $('mira').style.display = escopo || holo ? 'none' : '';
     if (meuBoneco) meuBoneco.raiz.visible = !escopo && e.est !== 'morto';
     var yaw = ui.yaw, pitch = ui.pitch, alvoY = e.ag ? 1.2 : 1.55, dist = ar ? 6.5 : ui.ads ? 1.8 : 3.3, lado = ar ? 0 : ui.ads ? 0.45 : 0.75;
     var bx = e.x - Math.cos(yaw) * lado, bz = e.z + Math.sin(yaw) * lado, by = e.y + alvoY;
@@ -625,9 +665,9 @@
     var moveu = andar(dt);
     if (P) P.t += dt;
     // o trem
-    if (P && P.t < P.trem.dur + 6) { var tp = posTrem(); TREM.grupo.visible = true; TREM.grupo.position.set(tp.x, R.TREM_ALT, tp.z); TREM.grupo.rotation.y = P.trem.ry; TREM.atualizar(dt, true); S.motorTrem(modo === 'trem' ? 0.9 : Math.max(0, 0.5 - Math.hypot(tp.x - eu.x, tp.z - eu.z) / 300)); }
+    if (P && P.t < P.trem.dur + 6) { var tp = posTrem(); TREM.grupo.visible = true; TREM.grupo.position.set(tp.x, R.TREM_ALT, tp.z); TREM.grupo.rotation.y = P.trem.ry; TREM.atualizar(dt, true); buzina(dt, modo === 'trem'); S.motorTrem(modo === 'trem' ? 0.9 : Math.max(0, 0.5 - Math.hypot(tp.x - eu.x, tp.z - eu.z) / 300)); }
     else if (P) { TREM.grupo.visible = false; TREM.esconderEfeitos(); S.motorTrem(0); }
-    if (modo === 'cabine') { esperaT += dt; var ang0 = esperaT * 0.08, rT = 200; TREM.grupo.position.set(Math.cos(ang0) * rT, 110, Math.sin(ang0) * rT); TREM.grupo.rotation.y = Math.atan2(-Math.sin(ang0), Math.cos(ang0)); TREM.atualizar(dt, true); }
+    if (modo === 'cabine') { esperaT += dt; var ang0 = esperaT * 0.08, rT = 200; TREM.grupo.position.set(Math.cos(ang0) * rT, 110, Math.sin(ang0) * rT); TREM.grupo.rotation.y = Math.atan2(-Math.sin(ang0), Math.cos(ang0)); TREM.atualizar(dt, true); buzina(dt, true); S.motorTrem(0.9); }
     // meu boneco
     if (meuBoneco) {
       var est = eu.est === 'trem' || eu.est === 'cabine' ? null : eu.est;
@@ -649,12 +689,12 @@
       if (P.zona) { ZONA.atualizar(P.zona[0], P.zona[1], P.zona[2], dt); var fora = Math.hypot(eu.x - P.zona[0], eu.z - P.zona[1]) > P.zona[2]; $('tJogo').style.boxShadow = fora && eu.est === 'chao' ? 'inset 0 0 80px rgba(60,140,255,.7)' : ''; if (!$('aviso').dataset.fixo) $('aviso').textContent = P.zona[6] < 0 ? '' : (P.zona[7] ? 'Zona fechando: ' : 'A zona segura encolhe em ') + fmt(P.zona[8]); }
       atualizarItens(dt); atualizarDrops(dt); marcas();
       // tiro segurando
-      if (ui.tiro && eu.est === 'chao') atirar(agora);
+      if (ui.tiro && eu.est === 'chao') { grudar(dt); atirar(agora); }
       ui.recuo = Math.max(0, ui.recuo - dt * 2.2);
       // envia posição
       if (agora - ultEnvio > 75 && eu.est !== 'trem' && eu.est !== 'morto') { ultEnvio = agora; mandar({ t: 'p', x: +eu.x.toFixed(2), y: +eu.y.toFixed(2), z: +eu.z.toFixed(2), ry: +eu.ry.toFixed(2), pi: +ui.pitch.toFixed(2), ag: eu.ag ? 1 : 0, f: moveu ? 1 : 0, e: eu.est }); }
       $('hVivos').textContent = P.vivos; $('tJogo').dataset.fase = eu.est;
-      $('bPara').hidden = eu.est !== 'ar'; $('altura').hidden = !(eu.est === 'ar' || eu.est === 'para'); if (eu.est === 'ar' || eu.est === 'para') $('hAlt').textContent = Math.max(0, Math.round(eu.y - G.altura(I, eu.x, eu.z)));
+      $('bPara').hidden = eu.est !== 'ar'; $('bAcel').hidden = $('bMerg').hidden = eu.est !== 'ar'; $('altura').hidden = !(eu.est === 'ar' || eu.est === 'para'); if (eu.est === 'ar' || eu.est === 'para') $('hAlt').textContent = Math.max(0, Math.round(eu.y - G.altura(I, eu.x, eu.z)));
       var ac = inv.cu > 0 ? ['CURANDO', 1 - inv.cu / 3] : inv.rc > 0 ? ['RECARREGANDO', 0.5] : null; $('acao').hidden = !ac; if (ac) { $('acaoTxt').textContent = ac[0]; $('acaoBar').style.width = (ac[1] * 100) + '%'; }
       if (Math.floor(agora / 100) !== Math.floor((agora - dt * 1000) / 100)) { desenharMini(); desenharBussola(); desenharArmas(); }
       S.ouvinte(cam.position.x, cam.position.y, cam.position.z, Math.sin(ui.yaw), Math.cos(ui.yaw));
@@ -664,6 +704,7 @@
     camera(dt);
     renderer.render(cena, cam);
   }
+  var buzT = 2; function buzina(dt, perto) { if (!perto) return; buzT -= dt; if (buzT <= 0) { buzT = 7 + Math.random() * 5; S.buzina && S.buzina(); } }
   function fmt(s) { s = Math.max(0, s | 0); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
   function paraquedas(o, b, ligado) {
     if (ligado && !o.para) { o.para = BO.paraquedas([0xe8572a, 0x2f86e8, 0x9be81f, 0xb24bff][Math.floor(Math.random() * 4)]); cena.add(o.para); }
