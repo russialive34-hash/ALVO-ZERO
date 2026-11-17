@@ -101,7 +101,7 @@
   }
   function mec(nome, vol, atraso, pos) { if (!ctx) return; var d = saida(pos); tocar(BUF[nome], d, vol, 0.95 + Math.random() * 0.1, ctx.currentTime + (atraso || 0)); }
   S.tiro = function (arma, pos) {
-    var A0 = window.REGRAS && window.REGRAS.ARMAS[arma]; if (!TIRO[arma] && A0 && A0.base) arma = A0.base;
+    var A0 = window.REGRAS && window.REGRAS.ARMAS[arma]; if (!PERFIL[arma] && A0 && A0.base) arma = A0.base;
     if (!ctx) return; var p = PERFIL[arma]; if (!p) return; if (!BUF.ar9) prepararSons();
     var lista = BUF[arma], buf = lista[(Math.random() * lista.length) | 0], t = ctx.currentTime, d = saida(pos), v = p.vol * (0.9 + Math.random() * 0.15);
     if (pos) { // longe fica abafado e com mais eco

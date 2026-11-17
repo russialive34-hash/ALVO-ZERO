@@ -13,9 +13,9 @@
   /* ---------- 3D ---------- */
   /* ---------- opções de gráfico (salvas no aparelho) ---------- */
   var NIVEIS = {
-    baixo: { nome: 'BAIXO', res: 0.7, sombra: 0, aniso: 1, cadaSombra: 0, dica: 'Mais FPS. Sem sombras, imagem mais simples.' },
-    medio: { nome: 'MÉDIO', res: 0.9, sombra: 1, aniso: 2, cadaSombra: 4, dica: 'Equilibrado: sombras e boa imagem.' },
-    alto: { nome: 'ALTO', res: 1.25, sombra: 2, aniso: 4, cadaSombra: 2, dica: 'Sombras nítidas e imagem mais definida.' },
+    baixo: { nome: 'BAIXO', res: 0.75, sombra: 0, aniso: 1, cadaSombra: 0, dica: 'Mais FPS. Sem sombras, imagem mais simples.' },
+    medio: { nome: 'MÉDIO', res: 1, sombra: 1, aniso: 2, cadaSombra: 4, dica: 'Equilibrado: sombras e boa imagem.' },
+    alto: { nome: 'ALTO', res: 1.5, sombra: 2, aniso: 4, cadaSombra: 2, dica: 'Sombras nítidas e imagem mais definida.' },
     ultra: { nome: 'ULTRA', res: 2, sombra: 2, aniso: 8, suave: true, cadaSombra: 1, dica: 'Máximo detalhe e bordas lisas (celular forte). Bordas lisas valem ao reabrir o jogo.' }
   };
   var graf = { nivel: ler('az_graf') || (celular ? 'medio' : 'alto'), brilho: +(ler('az_brilho') || 1.05), cheia: ler('az_cheia') ? ler('az_cheia') === '1' : celular };
@@ -48,7 +48,8 @@
   function resolucaoAuto(dt) {
     fpsMedia += (1 / Math.max(dt, 0.001) - fpsMedia) * 0.05;
     if (++quadroN % 45) return; var n = NIVEIS[graf.nivel], ant = dinRes;
-    if (fpsMedia < 40 && dinRes > 0.55) dinRes = Math.max(0.55, dinRes - 0.1);
+    if (graf.nivel === 'alto' || graf.nivel === 'ultra') { if (dinRes !== 1) { dinRes = 1; renderer.setPixelRatio(Math.min(devicePixelRatio || 1, n.res)); ajustar(); } return; }
+    if (fpsMedia < 35 && dinRes > 0.8) dinRes = Math.max(0.8, dinRes - 0.05);
     else if (fpsMedia > 56 && dinRes < 1) dinRes = Math.min(1, dinRes + 0.05);
     if (ant !== dinRes) { renderer.setPixelRatio(Math.min(devicePixelRatio || 1, n.res) * dinRes); ajustar(); }
   }
